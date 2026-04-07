@@ -1,0 +1,18 @@
+{
+  "name": "gateway-worker",
+  "version": "1.0.0",
+  "description": "Discord Gateway WebSocket worker — VOICE_STATE_UPDATE 감지 및 임시 음성채널 자동 삭제",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "mongoose": "^7.0.0",
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
