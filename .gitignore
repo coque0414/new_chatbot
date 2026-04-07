@@ -1,3 +1,11 @@
-backend/.env
-".env.local" 
-"frontend-next/.env.local" 
+.env.local 
+frontend-next/.env.local 
+backend/.env 
+node_modules/ 
+.next/ 
+gateway-worker/.env 
+gateway-worker/node_modules/ 
+chroma_db/ 
+frontend/ 
+.claude/ 
+"how HEAD --name-only" 
