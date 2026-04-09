@@ -239,7 +239,7 @@ async function handleDispatch(t, d) {
 async function runScheduler() {
   try {
     const res = await fetch(
-      `http://localhost:3000/api/scheduler/check?secret=${process.env.SCHEDULER_SECRET}`
+      `${process.env.NEXTAUTH_URL}/api/scheduler/check?secret=${process.env.SCHEDULER_SECRET}`
     )
     const data = await res.json()
     console.log('[Scheduler]', new Date().toLocaleString('ko-KR'), data)
