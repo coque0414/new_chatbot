@@ -1,132 +1,104 @@
-# gateway-worker
+# 🗡️ LostArk Raid Reservation System
 
-Discord Gateway WebSocket 상시 연결 프로세스.  
-`VOICE_STATE_UPDATE` 이벤트를 감지해서 레이드 임시 음성채널에 아무도 없으면 자동 삭제.
+로스트아크 레이드 예약 시스템 - Discord 봇과 웹 대시보드를 연동한 레이드 파티 모집 플랫폼
 
----
+## ✨ 주요 기능
 
-## 역할
+### 🎮 Discord 봇
+- 레이드 모집 공고 자동 생성 (임베드 + 버튼)
+- 딜러/서포터 역할 구분 참가 (3:1 비율)
+- 로스트아크 캐릭터 연동 (직업/레벨/전투력 표시)
+- N종 기차 레이드 (1680~1730 레벨별 프리셋)
+- 모집 취소/참가 취소/출발 버튼
+- 레이드 출발 시 임시 음성채널 자동 생성 + 참가자 DM 발송
+- 음성채널 자동 삭제 (전원 퇴장 시)
+- N분 전 DM 알림 (10/20/30분 선택)
 
-Next.js(서버리스)는 Discord Gateway에 상시 연결할 수 없어서  
-이 워커가 별도 프로세스로 상시 실행되며 Gateway를 담당한다.
+### 🌐 웹 대시보드
+- Discord OAuth 로그인
+- 레이드 생성 (단일/N종 기차)
+- 내가 만든/참가한 레이드 목록
+- 서버별 레이드 현황
+- 캐릭터 연동 관리
+- 봇 설정 (채널 지정, 공고 정리)
+- 8가지 테마 (다크 2종 + 라이트 파스텔 6종)
 
-- Discord Gateway WebSocket 연결 유지 (자동 재연결 포함)
-- `GUILD_CREATE`로 시작 시 현재 음성 상태 초기화
-- `VOICE_STATE_UPDATE`로 유저 입퇴장 추적
-- 레이드 임시 음성채널에 아무도 없으면 즉시 삭제 + MongoDB 업데이트
+## 🛠️ 기술 스택
 
----
+| 분류 | 기술 |
+|------|------|
+| Frontend | Next.js 16, Tailwind CSS v4, shadcn/ui |
+| Auth | NextAuth v4 (Discord OAuth) |
+| Database | MongoDB Atlas |
+| Discord | REST API (discord.js 미사용) |
+| Gateway | Node.js WebSocket Worker |
 
-## 설치 및 실행
+## 🚀 시작하기
 
-### 1. 의존성 설치
+### 필수 조건
+- Node.js 18+
+- MongoDB Atlas 계정
+- Discord 개발자 포털 앱
+- 로스트아크 API 키
 
+### 설치
+
+1. 저장소 클론
 ```bash
-cd C:\new_chatbot\gateway-worker
+git clone https://github.com/{username}/lostark-raid-system
+cd lostark-raid-system/frontend-next
 npm install
 ```
 
-### 2. 환경 변수 설정
-
-`.env` 파일에 값 입력 (`frontend-next/.env.local`과 동일):
-
-```
-DISCORD_BOT_TOKEN=your_bot_token_here
-MONGODB_URI=your_mongodb_uri_here
-```
-
-### 3. 개발 실행 (파일 변경 시 자동 재시작)
-
+2. 환경 변수 설정
 ```bash
+cp .env.example .env.local
+# .env.local 파일에 값 입력
+```
+
+3. 개발 서버 실행
+```bash
+# Next.js
+npm run dev
+
+# Gateway Worker (별도 터미널)
+cd ../gateway-worker
+npm install
 npm run dev
 ```
 
-### 4. 프로덕션 실행
-
-**pm2 사용 (권장):**
-
-```bash
-# pm2 전역 설치 (최초 1회)
-npm install -g pm2
-
-# 워커 시작
-pm2 start index.js --name gateway-worker
-
-# 서버 재부팅 시 자동 시작 등록
-pm2 startup
-pm2 save
-
-# 상태 확인
-pm2 status
-pm2 logs gateway-worker
-
-# 재시작 / 중지
-pm2 restart gateway-worker
-pm2 stop gateway-worker
-```
-
-**systemd 사용 (Linux 서버):**
-
-```ini
-# /etc/systemd/system/gateway-worker.service
-[Unit]
-Description=Discord Gateway Worker
-After=network.target
-
-[Service]
-WorkingDirectory=/path/to/gateway-worker
-ExecStart=/usr/bin/node index.js
-Restart=always
-RestartSec=5
-EnvironmentFile=/path/to/gateway-worker/.env
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-systemctl enable gateway-worker
-systemctl start gateway-worker
-systemctl status gateway-worker
-```
-
----
-
-## Next.js와의 관계
-
-| 구분 | Next.js (frontend-next) | gateway-worker |
-|------|------------------------|----------------|
-| 역할 | 웹 UI, REST API, Discord interactions | Gateway WebSocket 상시 연결 |
-| 실행 방식 | `npm run dev` (개발) / Vercel (배포) | 별도 Node.js 프로세스 |
-| Discord 통신 | REST API (요청/응답) | WebSocket (실시간 이벤트) |
-| DB 접근 | 동일 MongoDB Atlas | 동일 MongoDB Atlas |
-
-두 프로세스는 완전히 독립적으로 실행된다.  
-같은 MongoDB를 바라보는 것으로 데이터를 공유한다.
-
----
-
-## 음성채널 삭제 로직
+## 📁 프로젝트 구조
 
 ```
-VOICE_STATE_UPDATE 수신
-  └─ channel_id === null (퇴장)
-       └─ 이전 채널 유저 수 확인
-            └─ 0명이면 → Raid.findOne({ guildId, voiceChannelId })
-                 └─ 레이드 채널이면 → DELETE /channels/{voiceChannelId}
-                      └─ raid.voiceChannelId = null 저장
+frontend-next/     Next.js 웹 대시보드
+gateway-worker/    Discord Gateway WebSocket 워커
 ```
 
-시작 시 `GUILD_CREATE` 이벤트로 현재 모든 음성 상태를 메모리에 초기화하기 때문에  
-워커 재시작 직후에도 정확하게 채널 인원을 파악할 수 있다.
+## 🔧 Discord 봇 설정
 
----
+1. Discord 개발자 포털에서 앱 생성
+2. Bot 토큰 발급
+3. Interactions Endpoint URL 설정 (ngrok URL + /api/discord/interactions)
+4. OAuth2 scope: identify, email, guilds
 
-## 봇 권한
+## 📝 환경 변수
 
-Discord 개발자 포털에서 아래 권한이 필요하다:
+```env
+DISCORD_BOT_TOKEN=
+DISCORD_PUBLIC_KEY=
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+MONGODB_URI=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
+LOSTARK_API_KEY=
+SCHEDULER_SECRET=
+```
 
-- **Gateway Intent**: `GUILD_VOICE_STATES` (intents: 128)
-- **Bot Permission**: `MANAGE_CHANNELS` (음성채널 삭제)
+## 📸 스크린샷
 
-Privileged Intents는 해당 없음 (`GUILD_VOICE_STATES`는 일반 intent).
+(스크린샷 추가 예정)
+
+## 📄 라이센스
+
+MIT License
