@@ -17,6 +17,19 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
   const dealers = initialParticipants.filter(p => p.role === "dealer")
   const supporters = initialParticipants.filter(p => p.role === "support")
 
+  const dealerList = dealers.length > 0
+    ? dealers.map(p => {
+        const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
+        return `⚔️ ${p.userName}${charInfo}`
+      }).join("\n")
+    : "없음"
+  const supporterList = supporters.length > 0
+    ? supporters.map(p => {
+        const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
+        return `🛡️ ${p.userName}${charInfo}`
+      }).join("\n")
+    : "없음"
+
   const embed = {
     title: trainLabel
       ? `⚔️ ${trainLabel} 레이드 모집 | ${raid.raidAlias} ${raid.difficulty}`
@@ -37,6 +50,8 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
       { name: "👑 주최자", value: hostName, inline: true },
       { name: "⚔️ 딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
       { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
+      { name: "⚔️ 딜러 목록", value: dealerList, inline: true },
+      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
     ],
     footer: { text: `LostArk Guide · 레이드 모집 · ID: ${raidId}` },
     timestamp: new Date().toISOString(),
@@ -182,6 +197,19 @@ export async function sendTrainAnnouncement(channelId, trainInfo, hostName, raid
   const dealers = initialParticipants.filter(p => p.role === "dealer")
   const supporters = initialParticipants.filter(p => p.role === "support")
 
+  const dealerList = dealers.length > 0
+    ? dealers.map(p => {
+        const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
+        return `⚔️ ${p.userName}${charInfo}`
+      }).join("\n")
+    : "없음"
+  const supporterList = supporters.length > 0
+    ? supporters.map(p => {
+        const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
+        return `🛡️ ${p.userName}${charInfo}`
+      }).join("\n")
+    : "없음"
+
   const raidListText = trainInfo.raids
     .map((r, i) => `${i + 1}. (${r.raidTag}) ${r.raidAlias} ${r.difficulty}`)
     .join("\n")
@@ -202,6 +230,8 @@ export async function sendTrainAnnouncement(channelId, trainInfo, hostName, raid
       { name: "👑 주최자", value: hostName, inline: true },
       { name: "⚔️ 딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
       { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
+      { name: "⚔️ 딜러 목록", value: dealerList, inline: true },
+      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
     ],
     footer: { text: `LostArk Guide · 기차 레이드 · ID: ${raidId}` },
     timestamp: new Date().toISOString(),
