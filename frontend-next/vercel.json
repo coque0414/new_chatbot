@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "src/app/api/discord/interactions/route.js": {
+      "maxDuration": 10
+    },
+    "src/app/api/scheduler/check/route.js": {
+      "maxDuration": 30
+    }
+  }
+}
