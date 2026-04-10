@@ -483,6 +483,22 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
   const supporterSlots = trainRaid.maxPlayers / 4
   const dealerSlots = trainRaid.maxPlayers - supporterSlots
 
+  const dealers = (trainRaid.participants || []).filter(p => p.role === "dealer")
+  const supporters = (trainRaid.participants || []).filter(p => p.role === "support")
+
+  const dealerList = dealers.length > 0
+    ? dealers.map(p => {
+        const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
+        return `⚔️ ${p.userName}${charInfo}`
+      }).join("\n")
+    : "없음"
+  const supporterList = supporters.length > 0
+    ? supporters.map(p => {
+        const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
+        return `🛡️ ${p.userName}${charInfo}`
+      }).join("\n")
+    : "없음"
+
   const raidListText = trainRaid.trainRaids?.length > 0
     ? trainRaid.trainRaids
         .sort((a, b) => a.order - b.order)
@@ -503,11 +519,11 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
           : `📆 **날짜:** ${trainRaid.date}\n🕐 **시간:** ${trainRaid.time}`,
         inline: false,
       },
-      { name: "👑 주최자",  value: trainRaid.hostName,               inline: true },
-      { name: "⚔️ 딜러",   value: `0 / ${dealerSlots}`,             inline: true },
-      { name: "🛡️ 서포터", value: `0 / ${supporterSlots}`,          inline: true },
-      { name: "⚔️ 딜러 목록",   value: "없음", inline: true },
-      { name: "🛡️ 서포터 목록", value: "없음", inline: true },
+      { name: "👑 주최자",  value: trainRaid.hostName,                          inline: true },
+      { name: "⚔️ 딜러",   value: `${dealers.length} / ${dealerSlots}`,        inline: true },
+      { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`,  inline: true },
+      { name: "⚔️ 딜러 목록",   value: dealerList,   inline: true },
+      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
     ],
     footer: { text: `LostArk Guide · 기차 레이드 · ID: ${id}` },
     timestamp: new Date().toISOString(),
