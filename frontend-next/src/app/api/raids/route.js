@@ -4,9 +4,35 @@ import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import { sendRaidAnnouncement, sendTrainAnnouncement } from "@/lib/discord"
 
+// ── IP 기반 Rate Limit (POST /api/raids: 1분에 10회) ──
+const raidCreateRateLimit = new Map()
+
+function checkRaidRateLimit(ip) {
+  const now = Date.now()
+  const windowMs = 60_000
+  const maxRequests = 10
+  const entry = raidCreateRateLimit.get(ip)
+  if (!entry || now - entry.start > windowMs) {
+    raidCreateRateLimit.set(ip, { start: now, count: 1 })
+    return false
+  }
+  entry.count++
+  return entry.count > maxRequests
+}
+
 // 레이드 예약 생성
 export async function POST(request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      ?? request.headers.get("x-real-ip")
+      ?? "unknown"
+    if (checkRaidRateLimit(ip)) {
+      return Response.json(
+        { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+        { status: 429 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 })
@@ -22,6 +48,20 @@ export async function POST(request) {
     } = body
 
     await connectDB()
+
+    // 서버당 활성 레이드 수 제한
+    if (guildId) {
+      const activeCount = await Raid.countDocuments({
+        guildId,
+        status: { $in: ["모집중", "모집완료"] },
+      })
+      if (activeCount >= 20) {
+        return Response.json(
+          { error: "서버당 동시 활성 레이드는 최대 20개까지 가능합니다. 기존 레이드를 정리 후 생성해주세요." },
+          { status: 429 }
+        )
+      }
+    }
 
     const hostUserId = session.user.discordId || session.user.id
 

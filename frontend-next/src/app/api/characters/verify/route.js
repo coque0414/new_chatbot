@@ -5,8 +5,34 @@ import UserCharacters from "@/lib/models/UserCharacters"
 
 const LOSTARK_API = "https://developer-lostark.game.onstove.com"
 
+// ── IP 기반 Rate Limit (POST /api/characters/verify: 1분에 5회) ──
+const verifyRateLimit = new Map()
+
+function checkVerifyRateLimit(ip) {
+  const now = Date.now()
+  const windowMs = 60_000
+  const maxRequests = 5
+  const entry = verifyRateLimit.get(ip)
+  if (!entry || now - entry.start > windowMs) {
+    verifyRateLimit.set(ip, { start: now, count: 1 })
+    return false
+  }
+  entry.count++
+  return entry.count > maxRequests
+}
+
 export async function POST(request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      ?? request.headers.get("x-real-ip")
+      ?? "unknown"
+    if (checkVerifyRateLimit(ip)) {
+      return Response.json(
+        { error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." },
+        { status: 429 }
+      )
+    }
+
     const session = await getServerSession(authOptions)
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const discordId = session.user.discordId || session.user.id
