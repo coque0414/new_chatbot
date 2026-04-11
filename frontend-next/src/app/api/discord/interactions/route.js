@@ -44,18 +44,37 @@ const RAID_SELECT_OPTIONS = [
 ]
 
 
+// IP 기반 rate limit: 10초 window, 최대 20회
+const rateLimitMap = new Map()
+
+function checkRateLimit(ip) {
+  const now = Date.now()
+  const windowMs = 10_000
+  const maxRequests = 20
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now - entry.start > windowMs) {
+    rateLimitMap.set(ip, { start: now, count: 1 })
+    return false
+  }
+  entry.count++
+  return entry.count > maxRequests
+}
+
 async function verifyDiscordRequest(request) {
   const signature = request.headers.get("x-signature-ed25519")
   const timestamp = request.headers.get("x-signature-timestamp")
+  if (!signature || !timestamp) return { isValid: false, body: "" }
   const body = await request.text()
-
-  const isValid = nacl.sign.detached.verify(
-    Buffer.from(timestamp + body),
-    Buffer.from(signature, "hex"),
-    Buffer.from(process.env.DISCORD_PUBLIC_KEY, "hex")
-  )
-
-  return { isValid, body }
+  try {
+    const isValid = nacl.sign.detached.verify(
+      Buffer.from(timestamp + body),
+      Buffer.from(signature, "hex"),
+      Buffer.from(process.env.DISCORD_PUBLIC_KEY, "hex")
+    )
+    return { isValid, body }
+  } catch {
+    return { isValid: false, body: "" }
+  }
 }
 
 function isExpired(raid) {
@@ -222,6 +241,11 @@ function buildCharSelectResponse(eligibleChars, role, raidId, minLevel) {
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
+    if (checkRateLimit(ip)) {
+      return new Response("Too Many Requests", { status: 429 })
+    }
+
     const { isValid, body } = await verifyDiscordRequest(request)
 
     if (!isValid) {
