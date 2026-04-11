@@ -22,7 +22,8 @@ export async function GET(request, { params }) {
 
     return Response.json({ raid })
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 })
+    console.error(error)
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }
 
@@ -51,7 +52,8 @@ export async function PATCH(request, { params }) {
     return Response.json({ success: true, raid: updated })
 
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 })
+    console.error(error)
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }
 
@@ -96,7 +98,8 @@ export async function DELETE(request, { params }) {
     return Response.json({ success: true })
 
   } catch (error) {
+    console.error(error)
     console.error("레이드 취소 오류:", error)
-    return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }

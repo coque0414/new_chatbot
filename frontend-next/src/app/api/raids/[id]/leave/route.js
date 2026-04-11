@@ -34,7 +34,8 @@ export async function POST(request, { params }) {
     return Response.json({ success: true, raid })
 
   } catch (error) {
+    console.error(error)
     console.error("참가 취소 오류:", error)
-    return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }

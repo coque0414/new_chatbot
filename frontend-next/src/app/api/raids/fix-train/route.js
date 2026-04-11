@@ -51,6 +51,7 @@ export async function GET(request) {
       raids: summary,
     })
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 })
+    console.error(error)
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }

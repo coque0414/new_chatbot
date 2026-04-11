@@ -50,7 +50,8 @@ export async function GET() {
     return Response.json({ guilds })
 
   } catch (error) {
+    console.error(error)
     console.error("guilds API 오류:", error)
-    return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }

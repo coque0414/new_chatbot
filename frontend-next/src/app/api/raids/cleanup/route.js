@@ -44,7 +44,8 @@ export async function GET(request) {
 
     return Response.json({ raids })
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 })
+    console.error(error)
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }
 
@@ -86,7 +87,8 @@ export async function DELETE(request) {
           if (res.ok || res.status === 404) discordDeleted++
           else errors.push(`Discord 삭제 실패 (${raid._id}): HTTP ${res.status}`)
         } catch (e) {
-          errors.push(`Discord 삭제 실패 (${raid._id}): ${e.message}`)
+          console.error(`Discord 삭제 실패 (${raid._id}):`, e)
+          errors.push(`Discord 삭제 실패 (${raid._id})`)
         }
       }
     }
@@ -99,6 +101,7 @@ export async function DELETE(request) {
 
     return Response.json({ success: true, webDeleted, discordDeleted, errors })
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 })
+    console.error(error)
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }

@@ -68,7 +68,8 @@ export async function GET(request) {
     return Response.json({ guilds: guildsWithChannels })
 
   } catch (error) {
+    console.error(error)
     console.error("Discord API error:", error)
-    return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }

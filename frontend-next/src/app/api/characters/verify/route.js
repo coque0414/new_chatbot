@@ -7,19 +7,13 @@ const LOSTARK_API = "https://developer-lostark.game.onstove.com"
 
 export async function POST(request) {
   try {
-    const { characterName, discordId: bodyDiscordId } = await request.json()
+    const session = await getServerSession(authOptions)
+    if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
+    const discordId = session.user.discordId || session.user.id
+
+    const { characterName } = await request.json()
     if (!characterName?.trim()) {
       return Response.json({ error: "캐릭터명을 입력해주세요." }, { status: 400 })
-    }
-
-    // discordId: 본문에 없으면 세션에서 가져옴
-    let discordId = bodyDiscordId
-    if (!discordId) {
-      const session = await getServerSession(authOptions)
-      discordId = session?.user?.discordId || session?.user?.id
-    }
-    if (!discordId) {
-      return Response.json({ error: "인증이 필요합니다." }, { status: 401 })
     }
 
     // 로아 API 호출

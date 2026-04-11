@@ -79,8 +79,9 @@ export async function POST(request) {
 
     return Response.json({ success: true, trainRaid })
   } catch (error) {
+    console.error(error)
     console.error("기차 레이드 생성 오류:", error)
-    return Response.json({ error: error.message }, { status: 500 })
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }
 
@@ -123,6 +124,7 @@ export async function GET(request) {
 
     return Response.json({ trainRaids: [] })
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 })
+    console.error(error)
+    return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
   }
 }
