@@ -5,9 +5,71 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import { getTheme } from "@/lib/themes"
+
+// ── 로아 주간 유틸 ──────────────────────────────────────────────
+
+function getLoaWeekStart(date = new Date()) {
+  const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000)
+  const day = kst.getUTCDay() // 0=일, 3=수
+  const diffToWed = (day >= 3) ? day - 3 : day + 4
+  const wed = new Date(kst)
+  wed.setUTCDate(kst.getUTCDate() - diffToWed)
+  wed.setUTCHours(0, 0, 0, 0)
+  return wed // UTC 기준이지만 KST 00:00을 의미
+}
+
+function getLoaWeekRange(weekOffset = 0) {
+  const start = getLoaWeekStart()
+  start.setUTCDate(start.getUTCDate() + weekOffset * 7)
+  const end = new Date(start)
+  end.setUTCDate(start.getUTCDate() + 6)
+  end.setUTCHours(14, 59, 59, 999) // KST 23:59:59
+  return { start, end }
+}
+
+// API에 넘길 KST 날짜 문자열 "YYYY-MM-DD HH:MM" 생성
+function weekRangeStrings(weekOffset) {
+  const { start, end } = getLoaWeekRange(weekOffset)
+  const weekStart = start.toISOString().slice(0, 16).replace("T", " ")
+  const endKST = new Date(end.getTime() + 9 * 60 * 60 * 1000)
+  const weekEnd = endKST.toISOString().slice(0, 16).replace("T", " ")
+  return { weekStart, weekEnd }
+}
+
+function formatWeekLabel(weekOffset) {
+  const { start, end } = getLoaWeekRange(weekOffset)
+  const sm = start.getUTCMonth() + 1
+  const sd = start.getUTCDate()
+  const endKST = new Date(end.getTime() + 9 * 60 * 60 * 1000)
+  const em = endKST.getUTCMonth() + 1
+  const ed = endKST.getUTCDate()
+  const prefix = weekOffset === 0 ? "이번 주" : `+${weekOffset}주`
+  return `${prefix} (${sm}/${sd} 수 ~ ${em}/${ed} 화)`
+}
+
+function formatDateLabel(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number)
+  const date = new Date(y, m - 1, d)
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"]
+  return `📅 ${m}월 ${d}일 (${dayNames[date.getDay()]})`
+}
+
+function groupRaidsByDate(raids) {
+  const mobaChul = raids.filter(r => r.isMobaChul)
+  const scheduled = raids.filter(r => !r.isMobaChul)
+  const groups = {}
+  for (const raid of scheduled) {
+    if (!groups[raid.date]) groups[raid.date] = []
+    groups[raid.date].push(raid)
+  }
+  const sortedDates = Object.keys(groups).sort()
+  return { mobaChul, dateGroups: sortedDates.map(d => ({ date: d, raids: groups[d] })) }
+}
+
+// ──────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
@@ -24,6 +86,7 @@ export default function DashboardPage() {
   const [expandedGuild, setExpandedGuild] = useState(null)
   const [guildRaids, setGuildRaids] = useState({})
   const [guildRaidsLoading, setGuildRaidsLoading] = useState({})
+  const [weekOffset, setWeekOffset] = useState(0)
 
   useEffect(() => {
     if (status !== "authenticated") return
@@ -35,9 +98,7 @@ export default function DashboardPage() {
         ])
         const myData     = await myRes.json()
         const joinedData = await joinedRes.json()
-
         const sortByDate = (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-
         setMyRaids((myData.raids || []).sort(sortByDate))
         setJoinedRaids((joinedData.raids || []).sort(sortByDate))
       } catch (e) {
@@ -99,9 +160,12 @@ export default function DashboardPage() {
     if (expandedGuild === guildId) { setExpandedGuild(null); return }
     setExpandedGuild(guildId)
     if (guildRaids[guildId] !== undefined) return
+    const { weekStart, weekEnd } = weekRangeStrings(weekOffset)
     setGuildRaidsLoading(prev => ({ ...prev, [guildId]: true }))
     try {
-      const res = await fetch(`/api/raids?guildId=${guildId}&status=active`)
+      const res = await fetch(
+        `/api/raids?guildId=${guildId}&status=active&weekStart=${encodeURIComponent(weekStart)}&weekEnd=${encodeURIComponent(weekEnd)}`
+      )
       const data = await res.json()
       setGuildRaids(prev => ({ ...prev, [guildId]: data.raids || [] }))
     } catch (e) {
@@ -111,16 +175,12 @@ export default function DashboardPage() {
     }
   }
 
-  const sortRaids = (raids) => {
-    const now = new Date()
-    return [...raids].sort((a, b) => {
-      if (a.isMobaChul && !b.isMobaChul) return -1
-      if (!a.isMobaChul && b.isMobaChul) return 1
-      if (a.isMobaChul && b.isMobaChul) return new Date(b.createdAt) - new Date(a.createdAt)
-      const aTime = new Date(`${a.date}T${a.time}:00+09:00`)
-      const bTime = new Date(`${b.date}T${b.time}:00+09:00`)
-      return Math.abs(aTime - now) - Math.abs(bTime - now)
-    })
+  const handleWeekChange = (delta) => {
+    const newOffset = weekOffset + delta
+    if (newOffset < 0) return
+    setWeekOffset(newOffset)
+    setGuildRaids({})
+    setExpandedGuild(null)
   }
 
   const statusColor = {
@@ -139,7 +199,6 @@ export default function DashboardPage() {
     const dealers = raid.participants?.filter(p => p.role === "dealer") || []
     const supporters = raid.participants?.filter(p => p.role === "support") || []
     const currentNotify = raid.notifyMinutesBefore ?? 30
-
     const isTrain = !!(raid.isTrain || raid.trainLabel)
     const href = `/raids/${raid._id}`
 
@@ -346,6 +405,33 @@ export default function DashboardPage() {
         <h2 className={`text-base font-bold mb-4 ${d ? "text-white" : "text-gray-800"}`}>
           서버별 레이드 현황
         </h2>
+
+        {/* 주간 네비게이터 */}
+        <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border mb-4
+          ${d ? "bg-white/[0.03] border-white/10" : "bg-white border-purple-100"}`}>
+          <button
+            onClick={() => handleWeekChange(-1)}
+            disabled={weekOffset === 0}
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors
+              ${weekOffset === 0
+                ? d ? "text-gray-600 cursor-not-allowed" : "text-gray-300 cursor-not-allowed"
+                : d ? "text-gray-300 hover:bg-white/10" : "text-gray-600 hover:bg-purple-50"
+              }`}>
+            <ChevronLeft size={14} />
+            이전 주
+          </button>
+          <span className={`text-sm font-medium ${d ? "text-gray-200" : "text-gray-700"}`}>
+            {formatWeekLabel(weekOffset)}
+          </span>
+          <button
+            onClick={() => handleWeekChange(1)}
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors
+              ${d ? "text-gray-300 hover:bg-white/10" : "text-gray-600 hover:bg-purple-50"}`}>
+            다음 주
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
         {guildsLoading ? (
           <p className={`text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>불러오는 중...</p>
         ) : guilds.length === 0 ? (
@@ -381,18 +467,38 @@ export default function DashboardPage() {
                 </button>
 
                 {expandedGuild === guild.id && (
-                  <div className={`mt-1 px-1 pb-1`}>
+                  <div className="mt-1 px-1 pb-1">
                     {guildRaidsLoading[guild.id] ? (
                       <p className={`text-sm py-4 text-center ${d ? "text-gray-500" : "text-gray-400"}`}>불러오는 중...</p>
                     ) : !guildRaids[guild.id] || guildRaids[guild.id].length === 0 ? (
                       <p className={`text-sm py-4 text-center ${d ? "text-gray-500" : "text-gray-400"}`}>
-                        진행 중인 레이드가 없습니다
+                        이번 주 진행 중인 레이드가 없습니다
                       </p>
-                    ) : (
-                      <div className="pt-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
-                        {sortRaids(guildRaids[guild.id]).map(raid => <RaidCard key={raid._id} raid={raid} />)}
-                      </div>
-                    )}
+                    ) : (() => {
+                      const { mobaChul, dateGroups } = groupRaidsByDate(guildRaids[guild.id])
+                      return (
+                        <div className="pt-2 space-y-4">
+                          {mobaChul.length > 0 && (
+                            <div>
+                              <p className={`text-xs font-semibold mb-2 ${d ? "text-amber-400" : "text-amber-600"}`}>⚡ 모바출</p>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
+                                {mobaChul.map(raid => <RaidCard key={raid._id} raid={raid} />)}
+                              </div>
+                            </div>
+                          )}
+                          {dateGroups.map(({ date, raids: dateRaids }) => (
+                            <div key={date}>
+                              <p className={`text-xs font-semibold mb-2 ${d ? "text-gray-400" : "text-gray-500"}`}>
+                                {formatDateLabel(date)}
+                              </p>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
+                                {dateRaids.map(raid => <RaidCard key={raid._id} raid={raid} />)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>

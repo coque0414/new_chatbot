@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Plus, Calendar, MessageSquare, Settings, LogOut } from "lucide-react"
@@ -26,6 +27,15 @@ export default function DashboardLayout({ themeId, setThemeId, children, session
   const theme = getTheme(themeId)
   const d = theme.isDark
   const user = session?.user
+  const [charInfo, setCharInfo] = useState(null)
+
+  useEffect(() => {
+    if (!session) return
+    fetch("/api/characters")
+      .then(r => r.json())
+      .then(data => setCharInfo({ representCharacter: data.representCharacter, characters: data.characters || [] }))
+      .catch(() => {})
+  }, [session])
 
   return (
     <div className="min-h-screen transition-colors duration-300"
@@ -69,6 +79,35 @@ export default function DashboardLayout({ themeId, setThemeId, children, session
                   <p className="text-sm font-bold truncate" style={{ color: theme.text }}>{user.name}</p>
                   <p className="text-xs truncate" style={{ color: theme.subtext }}>{user.email}</p>
                 </div>
+              </div>
+
+              {/* 대표 캐릭터 */}
+              <div className="mt-3">
+                {charInfo?.representCharacter ? (() => {
+                  const rep = charInfo.characters.find(c => c.name === charInfo.representCharacter)
+                  return (
+                    <a href="/characters" className="block group">
+                      <p className="text-xs mb-0.5" style={{ color: theme.subtext }}>대표 캐릭터</p>
+                      <p className="text-sm font-medium truncate group-hover:underline" style={{ color: theme.accent }}>
+                        ⚔️ {charInfo.representCharacter}
+                        {rep?.class && (
+                          <span className="font-normal text-xs ml-1" style={{ color: theme.subtext }}>
+                            ({rep.class})
+                          </span>
+                        )}
+                      </p>
+                    </a>
+                  )
+                })() : (
+                  <div>
+                    <p className="text-xs mb-1.5" style={{ color: theme.subtext }}>캐릭터 미연동</p>
+                    <a href="/characters"
+                      className="inline-block text-xs px-2.5 py-1 rounded-lg font-medium transition-opacity hover:opacity-80"
+                      style={{ backgroundColor: `${theme.accent}20`, color: theme.accent }}>
+                      연동하기
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}
