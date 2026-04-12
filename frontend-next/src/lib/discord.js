@@ -7,11 +7,6 @@ const DISCORD_API = "https://discord.com/api/v10"
 export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, initialParticipants, trainLabel = null) {
   const token = process.env.DISCORD_BOT_TOKEN
 
-  const difficultyEmoji = {
-    "노말": "🟢", "하드": "🔴", "싱글": "🔵",
-    "나이트메어": "⚫", "The First": "⭐"
-  }
-
   const supporterSlots = raid.maxPlayers / 4
   const dealerSlots = raid.maxPlayers - supporterSlots
   const dealers = initialParticipants.filter(p => p.role === "dealer")
@@ -31,29 +26,27 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
     : "없음"
 
   const embed = {
-    title: trainLabel
-      ? `⚔️ ${trainLabel} 레이드 모집 | ${raid.raidAlias} ${raid.difficulty}`
-      : `⚔️ 레이드 모집 | ${raid.raidAlias} ${raid.difficulty}`,
-    description: `**${raid.raidName}** 레이드 파티원을 모집합니다!`,
+    title: `${raid.raidAlias} ${raid.difficulty} 모집`,
+    description: `${raid.raidName} 파티원을 모집합니다`,
     color: 0x9B59B6,
     fields: [
       {
-        name: "📋 레이드 정보",
-        value: `${difficultyEmoji[raid.difficulty] || "⚔️"} **난이도:** ${raid.difficulty}\n👥 **최대 인원:** ${raid.maxPlayers}명 (딜러 ${dealerSlots} / 서포터 ${supporterSlots})\n⚡ **모바출:** ${raid.isMobaChul ? "✅ 인원 충족 시 즉시 출발" : "❌ 정해진 시간에 출발"}`,
+        name: "레이드 정보",
+        value: `난이도: ${raid.difficulty} | 인원: ${raid.maxPlayers}명 (딜러 ${dealerSlots} / 서포터 ${supporterSlots})\n출발: ${raid.isMobaChul ? "인원 충족 시 즉시 출발" : "정해진 시간에 출발"}`,
         inline: false
       },
       ...(!raid.isMobaChul ? [{
-        name: "📅 일정",
-        value: `📆 **날짜:** ${raid.date}\n🕐 **시간:** ${raid.time}`,
+        name: "일정",
+        value: `${raid.date} ${raid.time}`,
         inline: false
       }] : []),
-      { name: "👑 주최자", value: hostName, inline: true },
-      { name: "⚔️ 딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
-      { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
-      { name: "⚔️ 딜러 목록", value: dealerList, inline: true },
-      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
+      { name: "주최자", value: hostName, inline: true },
+      { name: "딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
+      { name: "서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
+      { name: "딜러 목록", value: dealerList, inline: true },
+      { name: "서포터 목록", value: supporterList, inline: true },
     ],
-    footer: { text: `LostArk Guide · 레이드 모집 · ID: ${raidId}` },
+    footer: { text: `LostArk 레이드 · ID: ${raidId}` },
     timestamp: new Date().toISOString(),
   }
 
@@ -215,25 +208,25 @@ export async function sendTrainAnnouncement(channelId, trainInfo, hostName, raid
     .join("\n")
 
   const embed = {
-    title: `⚔️ ${trainInfo.trainLabel} (${trainInfo.maxPlayers}인)`,
-    description: "파티원을 모집합니다!",
+    title: `${trainInfo.trainLabel} (${trainInfo.maxPlayers}인) 모집`,
+    description: "파티원을 모집합니다",
     color: 0x9B59B6,
     fields: [
-      { name: "📋 레이드 구성", value: raidListText, inline: false },
+      { name: "레이드 구성", value: raidListText, inline: false },
       {
-        name: "📅 일정",
+        name: "일정",
         value: trainInfo.isMobaChul
-          ? "⚡ 모바출 - 인원 충족 시 즉시 출발"
-          : `📆 **날짜:** ${trainInfo.date}\n🕐 **시간:** ${trainInfo.time}`,
+          ? "모바출 - 인원 충족 시 즉시 출발"
+          : `${trainInfo.date} ${trainInfo.time}`,
         inline: false
       },
-      { name: "👑 주최자", value: hostName, inline: true },
-      { name: "⚔️ 딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
-      { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
-      { name: "⚔️ 딜러 목록", value: dealerList, inline: true },
-      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
+      { name: "주최자", value: hostName, inline: true },
+      { name: "딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
+      { name: "서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
+      { name: "딜러 목록", value: dealerList, inline: true },
+      { name: "서포터 목록", value: supporterList, inline: true },
     ],
-    footer: { text: `LostArk Guide · 기차 레이드 · ID: ${raidId}` },
+    footer: { text: `LostArk 레이드 · ID: ${raidId}` },
     timestamp: new Date().toISOString(),
   }
 
@@ -308,25 +301,25 @@ export async function updateTrainDiscordMessage(raid) {
   const label = raid.trainLabel || "기차 레이드"
 
   const embedData = {
-    title: `⚔️ ${label} (${raid.maxPlayers}인)`,
-    description: "파티원을 모집합니다!",
+    title: `${label} (${raid.maxPlayers}인) 모집`,
+    description: "파티원을 모집합니다",
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [
-      { name: "📋 레이드 구성", value: raidListText, inline: false },
+      { name: "레이드 구성", value: raidListText, inline: false },
       {
-        name: "📅 일정",
+        name: "일정",
         value: raid.isMobaChul
-          ? "⚡ 모바출 - 인원 충족 시 즉시 출발"
-          : `📆 **날짜:** ${raid.date}\n🕐 **시간:** ${raid.time}`,
+          ? "모바출 - 인원 충족 시 즉시 출발"
+          : `${raid.date} ${raid.time}`,
         inline: false
       },
-      { name: "👑 주최자", value: raid.hostName, inline: true },
-      { name: "⚔️ 딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
-      { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
-      { name: "⚔️ 딜러 목록", value: dealerList, inline: true },
-      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
+      { name: "주최자", value: raid.hostName, inline: true },
+      { name: "딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
+      { name: "서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
+      { name: "딜러 목록", value: dealerList, inline: true },
+      { name: "서포터 목록", value: supporterList, inline: true },
     ],
-    footer: { text: `LostArk Guide · 기차 레이드 · ID: ${raidId}` },
+    footer: { text: `LostArk 레이드 · ID: ${raidId}` },
     timestamp: new Date().toISOString(),
   }
 
@@ -415,25 +408,25 @@ export async function updateTrainRaidDiscordMessage(trainRaid) {
   const embedColor = { "모집중": 0x9B59B6, "모집완료": 0x3498DB, "출발완료": 0xE67E22, "취소": 0x95A5A6 }
 
   const embedData = {
-    title: `⚔️ ${trainRaid.trainLabel} (${trainRaid.maxPlayers}인)`,
-    description: "파티원을 모집합니다!",
+    title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인) 모집`,
+    description: "파티원을 모집합니다",
     color: embedColor[trainRaid.status] ?? 0x9B59B6,
     fields: [
-      { name: "📋 레이드 구성", value: raidListText, inline: false },
+      { name: "레이드 구성", value: raidListText, inline: false },
       {
-        name: "📅 일정",
+        name: "일정",
         value: trainRaid.isMobaChul
-          ? "⚡ 모바출 - 인원 충족 시 즉시 출발"
-          : `📆 **날짜:** ${trainRaid.date}\n🕐 **시간:** ${trainRaid.time}`,
+          ? "모바출 - 인원 충족 시 즉시 출발"
+          : `${trainRaid.date} ${trainRaid.time}`,
         inline: false,
       },
-      { name: "👑 주최자",    value: trainRaid.hostName,               inline: true },
-      { name: "⚔️ 딜러",     value: `${dealers.length} / ${dealerSlots}`,   inline: true },
-      { name: "🛡️ 서포터",   value: `${supporters.length} / ${supporterSlots}`, inline: true },
-      { name: "⚔️ 딜러 목록",   value: dealerList,   inline: true },
-      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
+      { name: "주최자",    value: trainRaid.hostName,                          inline: true },
+      { name: "딜러",     value: `${dealers.length} / ${dealerSlots}`,        inline: true },
+      { name: "서포터",   value: `${supporters.length} / ${supporterSlots}`,  inline: true },
+      { name: "딜러 목록",   value: dealerList,   inline: true },
+      { name: "서포터 목록", value: supporterList, inline: true },
     ],
-    footer: { text: `LostArk Guide · 기차 레이드 · ID: ${id}` },
+    footer: { text: `LostArk 레이드 · ID: ${id}` },
     timestamp: new Date().toISOString(),
   }
 
@@ -507,25 +500,25 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
     : "구성 정보 없음"
 
   const embed = {
-    title: `⚔️ ${trainRaid.trainLabel} (${trainRaid.maxPlayers}인)`,
-    description: "파티원을 모집합니다!",
+    title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인) 모집`,
+    description: "파티원을 모집합니다",
     color: 0x9B59B6,
     fields: [
-      { name: "📋 레이드 구성", value: raidListText, inline: false },
+      { name: "레이드 구성", value: raidListText, inline: false },
       {
-        name: "📅 일정",
+        name: "일정",
         value: trainRaid.isMobaChul
-          ? "⚡ 모바출 - 인원 충족 시 즉시 출발"
-          : `📆 **날짜:** ${trainRaid.date}\n🕐 **시간:** ${trainRaid.time}`,
+          ? "모바출 - 인원 충족 시 즉시 출발"
+          : `${trainRaid.date} ${trainRaid.time}`,
         inline: false,
       },
-      { name: "👑 주최자",  value: trainRaid.hostName,                          inline: true },
-      { name: "⚔️ 딜러",   value: `${dealers.length} / ${dealerSlots}`,        inline: true },
-      { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`,  inline: true },
-      { name: "⚔️ 딜러 목록",   value: dealerList,   inline: true },
-      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
+      { name: "주최자",  value: trainRaid.hostName,                          inline: true },
+      { name: "딜러",   value: `${dealers.length} / ${dealerSlots}`,        inline: true },
+      { name: "서포터", value: `${supporters.length} / ${supporterSlots}`,  inline: true },
+      { name: "딜러 목록",   value: dealerList,   inline: true },
+      { name: "서포터 목록", value: supporterList, inline: true },
     ],
-    footer: { text: `LostArk Guide · 기차 레이드 · ID: ${id}` },
+    footer: { text: `LostArk 레이드 · ID: ${id}` },
     timestamp: new Date().toISOString(),
   }
 
@@ -570,11 +563,6 @@ export async function updateDiscordMessage(raid) {
   const dealers = raid.participants.filter(p => p.role === "dealer")
   const supporters = raid.participants.filter(p => p.role === "support")
 
-  const difficultyEmoji = {
-    "노말": "🟢", "하드": "🔴", "싱글": "🔵",
-    "나이트메어": "⚫", "The First": "⭐"
-  }
-
   // 참가자 목록 텍스트 생성
   const dealerList = dealers.length > 0
     ? dealers.map(p => {
@@ -597,27 +585,27 @@ export async function updateDiscordMessage(raid) {
   }
 
   const embedData = {
-    title: `⚔️ 레이드 모집 | ${raid.raidAlias} ${raid.difficulty}`,
-    description: `**${raid.raidName}** 레이드 파티원을 모집합니다!`,
+    title: `${raid.raidAlias} ${raid.difficulty} 모집`,
+    description: `${raid.raidName} 파티원을 모집합니다`,
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [
       {
-        name: "📋 레이드 정보",
-        value: `${difficultyEmoji[raid.difficulty] || "⚔️"} **난이도:** ${raid.difficulty}\n👥 **최대 인원:** ${raid.maxPlayers}명 (딜러 ${dealerSlots} / 서포터 ${supporterSlots})\n⚡ **모바출:** ${raid.isMobaChul ? "✅ 인원 충족 시 즉시 출발" : "❌ 정해진 시간에 출발"}`,
+        name: "레이드 정보",
+        value: `난이도: ${raid.difficulty} | 인원: ${raid.maxPlayers}명 (딜러 ${dealerSlots} / 서포터 ${supporterSlots})\n출발: ${raid.isMobaChul ? "인원 충족 시 즉시 출발" : "정해진 시간에 출발"}`,
         inline: false
       },
       ...(!raid.isMobaChul ? [{
-        name: "📅 일정",
-        value: `📆 **날짜:** ${raid.date}\n🕐 **시간:** ${raid.time}`,
+        name: "일정",
+        value: `${raid.date} ${raid.time}`,
         inline: false
       }] : []),
-      { name: "👑 주최자", value: raid.hostName, inline: true },
-      { name: "⚔️ 딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
-      { name: "🛡️ 서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
-      { name: "⚔️ 딜러 목록", value: dealerList, inline: true },
-      { name: "🛡️ 서포터 목록", value: supporterList, inline: true },
+      { name: "주최자", value: raid.hostName, inline: true },
+      { name: "딜러", value: `${dealers.length} / ${dealerSlots}`, inline: true },
+      { name: "서포터", value: `${supporters.length} / ${supporterSlots}`, inline: true },
+      { name: "딜러 목록", value: dealerList, inline: true },
+      { name: "서포터 목록", value: supporterList, inline: true },
     ],
-    footer: { text: `LostArk Guide · 레이드 모집 · ID: ${raid._id}` },
+    footer: { text: `LostArk 레이드 · ID: ${raid._id}` },
     timestamp: new Date().toISOString(),
   }
 

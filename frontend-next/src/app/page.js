@@ -8,24 +8,24 @@ import { Sun, Moon } from "lucide-react"
 
 const FEATURES = [
   {
-    icon: "⚔️",
-    title: "레이드 공략 챗봇",
-    desc: "에기르, 모르둠, 파멸의 성채 등 최신 레이드 패턴을 AI가 실시간으로 알려줍니다.",
-  },
-  {
-    icon: "📅",
-    title: "레이드 예약 시스템",
-    desc: "원하는 레이드를 예약하고 파티원을 모집하세요. Discord 채널에 자동으로 공지됩니다.",
-  },
-  {
-    icon: "🤖",
-    title: "Discord 봇 연동",
-    desc: "연결된 Discord 서버에서 레이드 모집 메시지가 자동 발송되고, 시작 전 DM 알림을 받을 수 있습니다.",
+    icon: "📋",
+    title: "레이드 모집 공고",
+    desc: "원하는 레이드와 날짜를 설정하면 Discord 채널에 모집 공고가 자동으로 올라가요.",
   },
   {
     icon: "🎮",
-    title: "캐릭터 정보 연동",
-    desc: "로스트아크 공식 API와 연동하여 내 캐릭터 정보를 기반으로 맞춤 공략을 제공합니다.",
+    title: "Discord 버튼 참가",
+    desc: "공고 메시지의 버튼을 눌러 딜러/서포터로 바로 참가할 수 있어요. 캐릭터 정보도 자동으로 등록돼요.",
+  },
+  {
+    icon: "⏰",
+    title: "레이드 시작 전 DM 알림",
+    desc: "레이드 시작 10/20/30분 전에 참가자 전원에게 DM으로 알림을 보내드려요.",
+  },
+  {
+    icon: "🚂",
+    title: "기차 레이드 지원",
+    desc: "여러 레이드를 연달아 도는 기차 레이드도 한 번에 모집할 수 있어요.",
   },
 ]
 
@@ -84,7 +84,7 @@ export default function LandingPage() {
           <span className="text-2xl">⚔️</span>
           <span className={`text-xl font-bold tracking-widest uppercase ${d ? "text-amber-400" : "text-purple-700"}`}
             style={{ fontFamily: "var(--font-cinzel), serif" }}>
-            LostArk Guide
+            LostArk 레이드
           </span>
         </div>
         <div className="flex items-center gap-6">
@@ -122,7 +122,7 @@ export default function LandingPage() {
       <section className="relative z-10 flex flex-col items-center text-center px-4 pt-28 pb-24">
         <Badge className={`mb-6 px-4 py-1 text-xs tracking-widest uppercase
           ${d ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-purple-100 text-purple-600 border-purple-200"}`}>
-          카제로스 레이드 공략 지원
+          Discord 연동 레이드 모집 시스템
         </Badge>
 
         <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
@@ -131,13 +131,13 @@ export default function LandingPage() {
           <br />
           <span className={`bg-gradient-to-r bg-clip-text text-transparent
             ${d ? "from-amber-400 via-orange-400 to-yellow-300" : "from-purple-500 via-violet-500 to-indigo-500"}`}>
-            공략 가이드
+            레이드 모집
           </span>
         </h1>
 
         <p className={`text-lg md:text-xl max-w-2xl mb-10 leading-relaxed ${d ? "text-gray-400" : "text-gray-500"}`}>
-          AI 챗봇으로 레이드 패턴을 즉시 확인하고,<br />
-          Discord와 연동된 레이드 예약 시스템으로 파티를 구성하세요.
+          Discord 서버와 연동된 레이드 모집 시스템으로<br />
+          파티를 쉽고 빠르게 구성하세요.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -145,20 +145,14 @@ export default function LandingPage() {
             className={`font-bold px-8 py-4 text-base tracking-wide
               ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
             onClick={() => window.location.href = "/login"}>
-            🎮 Discord로 시작하기
-          </Button>
-          <Button size="lg" variant="outline"
-            className={`px-8 py-4 text-base tracking-wide
-              ${d ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10" : "border-purple-300 text-purple-600 hover:bg-purple-50"}`}
-            onClick={() => window.location.href = "/chat"}>
-            💬 챗봇 체험하기
+            Discord로 시작하기
           </Button>
         </div>
 
         <div className={`flex gap-12 mt-16 pt-10 border-t ${d ? "border-white/5" : "border-purple-100"}`}>
           {[
-            { value: "6+", label: "레이드 공략" },
-            { value: "AI", label: "패턴 분석" },
+            { value: "8+", label: "지원 레이드" },
+            { value: "DM", label: "자동 알림" },
             { value: "Discord", label: "자동 연동" },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
@@ -248,13 +242,13 @@ export default function LandingPage() {
             </h2>
             <p className={`mb-8 leading-relaxed ${d ? "text-gray-400" : "text-gray-500"}`}>
               Discord 계정으로 로그인하고<br />
-              레이드 공략과 예약 시스템을 무료로 사용해보세요.
+              레이드 모집 시스템을 무료로 사용해보세요.
             </p>
             <Button size="lg"
               className={`font-bold px-10 py-4 text-base tracking-wide
                 ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
               onClick={() => window.location.href = "/login"}>
-              🎮 Discord로 시작하기
+              Discord로 시작하기
             </Button>
           </div>
         </div>
@@ -263,7 +257,7 @@ export default function LandingPage() {
       {/* 푸터 */}
       <footer className={`relative z-10 border-t px-8 py-8 text-center
         ${d ? "border-white/5 text-gray-600" : "border-purple-100 text-gray-400"}`}>
-        <p className="text-xs tracking-widest uppercase">© 2026 LostArk Guide · Powered by AI</p>
+        <p className="text-xs tracking-widest uppercase">© 2026 LostArk 레이드</p>
       </footer>
     </div>
   )
