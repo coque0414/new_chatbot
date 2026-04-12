@@ -3,26 +3,16 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import GuildSettings from "@/lib/models/GuildSettings"
 
-const DISCORD_API = "https://discord.com/api/v10"
-const ADMINISTRATOR = 0x8
-
-async function isGuildAdmin(guildId, userId, botToken) {
+async function isGuildAdmin(guildId, accessToken) {
   try {
-    const [memberRes, rolesRes] = await Promise.all([
-      fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
-        headers: { Authorization: `Bot ${botToken}` },
-      }),
-      fetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
-        headers: { Authorization: `Bot ${botToken}` },
-      }),
-    ])
-    if (!memberRes.ok || !rolesRes.ok) return false
-    const member = await memberRes.json()
-    const roles = await rolesRes.json()
-    const adminRoleIds = new Set(
-      roles.filter(r => (BigInt(r.permissions) & BigInt(ADMINISTRATOR)) !== 0n).map(r => r.id)
-    )
-    return member.roles?.some(rid => adminRoleIds.has(rid)) ?? false
+    const res = await fetch("https://discord.com/api/v10/users/@me/guilds", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!res.ok) return false
+    const guilds = await res.json()
+    const guild = guilds.find(g => g.id === guildId)
+    if (!guild) return false
+    return (BigInt(guild.permissions) & BigInt(0x8)) !== 0n
   } catch {
     return false
   }
@@ -62,8 +52,10 @@ export async function POST(request) {
 
   if (!guildId) return Response.json({ error: "guildId 필요" }, { status: 400 })
 
-  const userId = session.user.discordId || session.user.id
-  const admin = await isGuildAdmin(guildId, userId, process.env.DISCORD_BOT_TOKEN)
+  if (!session.user.accessToken) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+  const admin = await isGuildAdmin(guildId, session.user.accessToken)
   if (!admin) return Response.json({ error: "Forbidden" }, { status: 403 })
 
   await connectDB()

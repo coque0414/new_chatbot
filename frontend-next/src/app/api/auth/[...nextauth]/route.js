@@ -17,6 +17,7 @@ export const authOptions = {
       session.user.id = token.sub
       session.user.discordId = token.discordId
       session.user.image = token.picture
+      session.user.accessToken = token.accessToken
       session.accessToken = token.accessToken
       return session
     },
