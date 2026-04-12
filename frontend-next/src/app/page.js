@@ -38,6 +38,16 @@ const RAIDS = [
   { name: "그림자 레이드", level: "1710+", tag: "세르카", lightColor: "text-emerald-500", darkColor: "text-emerald-300" },
 ]
 
+async function openBotInvite() {
+  try {
+    const res = await fetch("/api/discord/bot-invite")
+    const data = await res.json()
+    if (data.inviteUrl) window.open(data.inviteUrl, "_blank")
+  } catch {
+    // ignore
+  }
+}
+
 export default function LandingPage() {
   const [dark, setDark] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -146,6 +156,12 @@ export default function LandingPage() {
               ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
             onClick={() => window.location.href = "/login"}>
             Discord로 시작하기
+          </Button>
+          <Button size="lg" variant="outline"
+            className={`font-bold px-8 py-4 text-base tracking-wide
+              ${d ? "border-amber-500/40 text-amber-400 hover:bg-amber-500/10" : "border-purple-300 text-purple-600 hover:bg-purple-50"}`}
+            onClick={openBotInvite}>
+            봇 추가하기
           </Button>
         </div>
 

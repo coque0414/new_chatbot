@@ -312,6 +312,34 @@ export default function BotSettingsPage() {
           </button>
         </div>
 
+        {/* 새 서버에 봇 추가하기 */}
+        <Card className={`border p-5 mb-4 flex items-center gap-4
+          ${d ? "bg-white/[0.03] border-white/10" : "bg-white border-purple-100"}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0
+            ${d ? "bg-amber-500/15" : "bg-purple-100"}`}>
+            🤖
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm">새 서버에 봇 추가하기</p>
+            <p className={`text-xs mt-0.5 ${d ? "text-gray-400" : "text-gray-500"}`}>
+              봇을 추가할 서버에서 관리자 권한이 필요합니다
+            </p>
+          </div>
+          <Button
+            size="sm"
+            className={`flex-shrink-0 font-bold text-xs px-4
+              ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/discord/bot-invite")
+                const data = await res.json()
+                if (data.inviteUrl) window.open(data.inviteUrl, "_blank")
+              } catch {}
+            }}>
+            봇 추가하기
+          </Button>
+        </Card>
+
         {/* 봇 상태 카드 */}
         <Card className={`border p-5 mb-6 flex items-center gap-4
           ${d ? "bg-white/[0.03] border-white/10" : "bg-white border-purple-100"}`}>
