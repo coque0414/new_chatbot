@@ -45,7 +45,10 @@ export async function POST(request) {
       hostRole,      // "dealer" | "support" | "none"
       hostCharacter, // { name, class, level, combatPower } | null
       trains,        // N종 기차 모드: 레이드 배열
+      notifyMinutesBefore: rawNotify,
     } = body
+
+    const notifyMinutesBefore = [10, 20, 30].includes(rawNotify) ? rawNotify : 30
 
     await connectDB()
 
@@ -98,6 +101,7 @@ export async function POST(request) {
         hostImage: session.user.image,
         participants,
         status: "모집중",
+        notifyMinutesBefore,
         // 기차 전용 필드
         isTrain: true,
         trainLabel: trainLabelText,
@@ -166,6 +170,7 @@ export async function POST(request) {
       hostImage: session.user.image,
       participants,
       status: "모집중",
+      notifyMinutesBefore,
     })
 
     // 2. Discord 메시지 전송

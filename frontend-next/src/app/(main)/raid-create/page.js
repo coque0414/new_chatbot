@@ -130,6 +130,10 @@ export default function RaidCreatePage() {
   const [raidDropdownOpen, setRaidDropdownOpen] = useState(false)
   const [hostRole, setHostRole] = useState("dealer")
 
+  // 알림 설정
+  const [notifyMinutes, setNotifyMinutes] = useState(30)
+  const [trainNotifyMinutes, setTrainNotifyMinutes] = useState(30)
+
   // N종 기차 폼 상태
   const [trainLevel, setTrainLevel] = useState(null)       // 선택된 배럭 레벨 (1680 등)
   const [trainOption, setTrainOption] = useState(null)     // 선택된 기차 구성 option 객체
@@ -645,6 +649,42 @@ export default function RaidCreatePage() {
                 </button>
               </div>
 
+              {/* DM 알림 */}
+              <div className={`transition-opacity duration-200
+                ${isMobaChul ? "opacity-40 pointer-events-none select-none" : ""}`}>
+                <label className={`block text-sm font-medium mb-2
+                  ${d ? "text-gray-300" : "text-gray-700"}`}>
+                  <Clock size={14} className="inline mr-1" />
+                  레이드 시작 전 DM 알림
+                  {isMobaChul && (
+                    <span className={`ml-2 text-xs font-normal
+                      ${d ? "text-gray-500" : "text-gray-400"}`}>
+                      (모바출 시 비활성)
+                    </span>
+                  )}
+                </label>
+                <div className="flex gap-2">
+                  {[10, 20, 30].map(min => (
+                    <button
+                      key={min}
+                      disabled={isMobaChul}
+                      onClick={() => setNotifyMinutes(min)}
+                      className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
+                        ${isMobaChul ? "cursor-not-allowed" : ""}
+                        ${notifyMinutes === min
+                          ? d
+                            ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
+                            : "bg-purple-600 border-purple-600 text-white"
+                          : d
+                            ? "bg-white/5 border-white/10 text-gray-400 hover:border-white/20"
+                            : "bg-white border-purple-100 text-gray-500 hover:border-purple-300"
+                        }`}>
+                      {min}분 전
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* 날짜 & 시간 */}
               <div className={`grid grid-cols-2 gap-4 transition-opacity duration-200 ${isMobaChul ? "opacity-40 pointer-events-none select-none" : ""}`}>
                 <div>
@@ -758,6 +798,7 @@ export default function RaidCreatePage() {
                             level: selectedCharacter.level,
                             combatPower: selectedCharacter.combatPower || null,
                           } : null,
+                          notifyMinutesBefore: notifyMinutes,
                         }),
                       })
                       const data = await res.json()
@@ -902,6 +943,42 @@ export default function RaidCreatePage() {
                   {/* 모바출 */}
                   {renderMobaChul(trainIsMobaChul, setTrainIsMobaChul, () => { setTrainDate(""); setTrainTime("") })}
 
+                  {/* DM 알림 */}
+                  <div className={`transition-opacity duration-200
+                    ${trainIsMobaChul ? "opacity-40 pointer-events-none select-none" : ""}`}>
+                    <label className={`block text-sm font-medium mb-2
+                      ${d ? "text-gray-300" : "text-gray-700"}`}>
+                      <Clock size={14} className="inline mr-1" />
+                      레이드 시작 전 DM 알림
+                      {trainIsMobaChul && (
+                        <span className={`ml-2 text-xs font-normal
+                          ${d ? "text-gray-500" : "text-gray-400"}`}>
+                          (모바출 시 비활성)
+                        </span>
+                      )}
+                    </label>
+                    <div className="flex gap-2">
+                      {[10, 20, 30].map(min => (
+                        <button
+                          key={min}
+                          disabled={trainIsMobaChul}
+                          onClick={() => setTrainNotifyMinutes(min)}
+                          className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
+                            ${trainIsMobaChul ? "cursor-not-allowed" : ""}
+                            ${trainNotifyMinutes === min
+                              ? d
+                                ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
+                                : "bg-purple-600 border-purple-600 text-white"
+                              : d
+                                ? "bg-white/5 border-white/10 text-gray-400 hover:border-white/20"
+                                : "bg-white border-purple-100 text-gray-500 hover:border-purple-300"
+                            }`}>
+                          {min}분 전
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* 날짜/시간 */}
                   {renderDateTime(trainIsMobaChul, trainDate, setTrainDate, trainTime, setTrainTime)}
 
@@ -956,6 +1033,7 @@ export default function RaidCreatePage() {
                             level: trainSelectedCharacter.level,
                             combatPower: trainSelectedCharacter.combatPower || null,
                           } : null,
+                          notifyMinutesBefore: trainNotifyMinutes,
                         }),
                       })
                       const data = await res.json()

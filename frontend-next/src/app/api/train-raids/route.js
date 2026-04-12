@@ -13,7 +13,8 @@ export async function POST(request) {
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     const body = await request.json()
-    const { trainKey, maxPlayers, isMobaChul, date, time, discordChannelId, guildId, hostRole, hostCharacter } = body
+    const { trainKey, maxPlayers, isMobaChul, date, time, discordChannelId, guildId, hostRole, hostCharacter, notifyMinutesBefore: rawNotify } = body
+    const notifyMinutesBefore = [10, 20, 30].includes(rawNotify) ? rawNotify : 30
 
     if (!trainKey) return Response.json({ error: "trainKey가 필요합니다." }, { status: 400 })
 
@@ -65,6 +66,7 @@ export async function POST(request) {
       hostImage: session.user.image,
       participants,
       status: "모집중",
+      notifyMinutesBefore,
     })
 
     // Discord 공고 메시지 전송
