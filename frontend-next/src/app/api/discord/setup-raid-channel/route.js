@@ -7,8 +7,24 @@ export async function POST(request) {
   const session = await getServerSession(authOptions)
   if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { channelId } = await request.json()
-  if (!channelId) return Response.json({ error: "channelId 필요" }, { status: 400 })
+  const { channelId, guildId } = await request.json()
+  if (!channelId || !guildId) return Response.json({ error: "channelId, guildId 필요" }, { status: 400 })
+
+  const accessToken = session.user.accessToken
+  if (!accessToken) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+  const guildsRes = await fetch("https://discord.com/api/v10/users/@me/guilds", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!guildsRes.ok) {
+    return Response.json({ error: "Forbidden" }, { status: 403 })
+  }
+  const userGuilds = await guildsRes.json()
+  const guild = userGuilds.find(g => g.id === guildId)
+  if (!guild || (BigInt(guild.permissions) & BigInt(0x8)) === 0n) {
+    return Response.json({ error: "서버 관리자만 설정할 수 있습니다." }, { status: 403 })
+  }
 
   const token = process.env.DISCORD_BOT_TOKEN
 

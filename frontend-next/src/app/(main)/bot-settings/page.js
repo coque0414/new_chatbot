@@ -238,7 +238,7 @@ export default function BotSettingsPage() {
       const res = await fetch("/api/discord/setup-raid-channel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channelId }),
+        body: JSON.stringify({ channelId, guildId }),
       })
       const data = await res.json()
       setSaveState(prev => ({
