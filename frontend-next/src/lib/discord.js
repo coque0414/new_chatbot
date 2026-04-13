@@ -298,7 +298,7 @@ export async function updateTrainDiscordMessage(raid) {
     "취소":     0x95A5A6,
   }
 
-  const label = raid.trainLabel || "기차 레이드"
+  const label = raid.trainLabel || "N종 레이드"
 
   const embedData = {
     title: `${label} (${raid.maxPlayers}인) 모집`,

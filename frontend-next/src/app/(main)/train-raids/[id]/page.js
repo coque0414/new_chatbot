@@ -75,7 +75,7 @@ export default function TrainRaidDetailPage() {
   const supporters = trainRaid?.participants?.filter(p => p.role === "support") || []
 
   const handleCancelRaid = async () => {
-    if (!confirm("정말 기차 레이드를 취소하시겠습니까?")) return
+    if (!confirm("정말 N종 레이드를 취소하시겠습니까?")) return
     setCancelling(true)
     try {
       const res = await fetch(`/api/raids/${params.id}`, { method: "DELETE" })
@@ -104,10 +104,10 @@ export default function TrainRaidDetailPage() {
           </a>
           <div>
             <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-cinzel), serif" }}>
-              기차 레이드 상세
+              N종 레이드 상세
             </h1>
             <p className={`text-sm mt-0.5 ${d ? "text-gray-400" : "text-gray-500"}`}>
-              기차 레이드 예약 정보 및 참가자 현황
+              N종 레이드 예약 정보 및 참가자 현황
             </p>
           </div>
         </div>
@@ -136,7 +136,7 @@ export default function TrainRaidDetailPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <Badge className={`text-xs ${d ? "bg-purple-500/15 text-purple-400 border-purple-500/30" : "bg-purple-50 text-purple-500 border-purple-200"}`}>
-                      기차 레이드
+                      N종 레이드
                     </Badge>
                     <Badge className={`text-xs border ${statusColor[trainRaid.status] || statusColor["모집중"]}`}>
                       {trainRaid.status}
@@ -306,7 +306,7 @@ export default function TrainRaidDetailPage() {
                     {cancelling ? "⏳" : <X size={16} />}
                   </Button>
                   <p className={`flex-1 text-xs self-center ${d ? "text-gray-500" : "text-gray-400"}`}>
-                    기차 레이드 참가/취소는 Discord 버튼을 통해 진행하세요.
+                    N종 레이드 참가/취소는 Discord 버튼을 통해 진행하세요.
                   </p>
                 </div>
               </Card>
@@ -314,7 +314,7 @@ export default function TrainRaidDetailPage() {
 
             {trainRaid.status === "취소" && (
               <Card className={`border p-5 text-center ${d ? "bg-white/[0.03] border-white/10" : "bg-white border-purple-100"}`}>
-                <p className={`text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>취소된 기차 레이드입니다</p>
+                <p className={`text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>취소된 N종 레이드입니다</p>
               </Card>
             )}
 

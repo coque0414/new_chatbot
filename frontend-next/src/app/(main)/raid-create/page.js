@@ -495,7 +495,7 @@ export default function RaidCreatePage() {
         <div className={`flex gap-1 p-1 rounded-xl mb-4 ${d ? "bg-white/5" : "bg-purple-50"}`}>
           {[
             { key: "single", label: "단일 레이드" },
-            { key: "train", label: "N종 기차" },
+            { key: "train", label: "N종 레이드" },
           ].map(tab => (
             <button
               key={tab.key}
@@ -886,7 +886,7 @@ export default function RaidCreatePage() {
               {trainLevel && (
                 <div>
                   <label className={`block text-sm font-medium mb-3 ${d ? "text-gray-300" : "text-gray-700"}`}>
-                    Step 3. 기차 구성 선택 *
+                    Step 3. 레이드 구성 선택 *
                   </label>
                   <div className="space-y-3">
                     {TRAIN_PRESETS[trainLevel].options.map(opt => (
@@ -922,7 +922,7 @@ export default function RaidCreatePage() {
               {trainLevel && trainOption && (
                 <div className={`p-4 rounded-xl border ${d ? "bg-white/[0.02] border-white/10" : "bg-purple-50/60 border-purple-100"}`}>
                   <p className={`text-sm font-semibold mb-2 ${d ? "text-amber-400" : "text-purple-700"}`}>
-                    📋 {TRAIN_PRESETS[trainLevel].label} 기차 ({trainMaxPlayers}인)
+                    📋 {TRAIN_PRESETS[trainLevel].label} 레이드 ({trainMaxPlayers}인)
                   </p>
                   <p className={`text-xs mb-3 ${d ? "text-gray-500" : "text-gray-400"}`}>
                     딜러 {trainMaxPlayers - trainMaxPlayers / 4}명 / 서포터 {trainMaxPlayers / 4}명 모집
@@ -1053,7 +1053,7 @@ export default function RaidCreatePage() {
                       <span className="animate-spin">⏳</span>
                       생성 중...
                     </span>
-                  ) : trainOption ? `${trainOption.raids.length}종 기차 생성` : "기차 생성"}
+                  ) : trainOption ? `${trainOption.raids.length}종 레이드 생성` : "생성"}
                 </Button>
               </div>
             </>
