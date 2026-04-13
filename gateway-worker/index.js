@@ -65,18 +65,18 @@ async function checkAndDeleteIfEmpty(channelId, guildId) {
       headers: { Authorization: `Bot ${BOT_TOKEN}` },
     })
 
-    if (res.ok || res.status === 404) {
-      await Raid.findByIdAndUpdate(raid._id, {
-        voiceChannelId:        null,
-        voiceChannelCreatedAt: null,
-      })
-      voiceStateMap.delete(channelId)
-      const label = raid.isTrain ? (raid.trainLabel || '기차 레이드') : `raid: ${raid._id}`
-      console.log(`[VOICE] 채널 ${channelId} 삭제 완료 (${label})`)
-    } else {
+    if (!res.ok && res.status !== 404) {
       const err = await res.json().catch(() => ({}))
       console.error(`[VOICE] 채널 삭제 실패: ${res.status}`, err.message || '')
     }
+    // 성공(200) / 이미 삭제됨(404) / 기타 오류 모두 DB는 항상 정리
+    await Raid.findByIdAndUpdate(raid._id, {
+      voiceChannelId:        null,
+      voiceChannelCreatedAt: null,
+    })
+    voiceStateMap.delete(channelId)
+    const label = raid.isTrain ? (raid.trainLabel || 'N종 레이드') : `raid: ${raid._id}`
+    console.log(`[VOICE] 채널 ${channelId} 처리 완료 (${label})`)
   } catch (e) {
     console.error('[VOICE] 삭제 중 오류:', e.message)
   }

@@ -23,12 +23,13 @@ async function createVoiceChannel(name, guildId) {
 // Discord 음성채널 삭제
 async function deleteVoiceChannel(channelId) {
   const token = process.env.DISCORD_BOT_TOKEN
-
   const res = await fetch(`${DISCORD_API}/channels/${channelId}`, {
     method: "DELETE",
     headers: { Authorization: `Bot ${token}` },
   })
-  if (!res.ok) throw new Error(`음성채널 삭제 실패: ${res.status}`)
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`음성채널 삭제 실패: ${res.status}`)
+  }
 }
 
 // "YYYY-MM-DD HH:MM" 형식 문자열 반환 (KST 기준 Date 객체 입력)
@@ -182,11 +183,12 @@ export async function GET(request) {
   for (const raid of expiredRaids) {
     try {
       await deleteVoiceChannel(raid.voiceChannelId)
-      await Raid.findByIdAndUpdate(raid._id, { $unset: { voiceChannelId: "" } })
-      deleteResults.push(raid._id)
     } catch (e) {
       console.error(`음성채널 삭제 실패 (channelId: ${raid.voiceChannelId}):`, e.message)
     }
+    // 성공/실패 관계없이 DB는 항상 정리
+    await Raid.findByIdAndUpdate(raid._id, { $unset: { voiceChannelId: "" } })
+    deleteResults.push(raid._id)
   }
 
   return Response.json({
