@@ -16,6 +16,23 @@ export async function POST(request) {
       return Response.json({ error: "guildId가 필요합니다" }, { status: 400 })
     }
 
+    const accessToken = session.user.accessToken
+    if (!accessToken) {
+      return Response.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const guildsRes = await fetch("https://discord.com/api/v10/users/@me/guilds", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+    if (!guildsRes.ok) {
+      return Response.json({ error: "Forbidden" }, { status: 403 })
+    }
+    const guilds = await guildsRes.json()
+    const guild = guilds.find(g => g.id === guildId)
+    if (!guild || (BigInt(guild.permissions) & BigInt(0x8)) === 0n) {
+      return Response.json({ error: "서버 관리자만 채널을 생성할 수 있습니다." }, { status: 403 })
+    }
+
     const token = process.env.DISCORD_BOT_TOKEN
 
     // 채널 생성
