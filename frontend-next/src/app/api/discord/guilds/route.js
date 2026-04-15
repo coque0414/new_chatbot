@@ -10,7 +10,7 @@ export async function GET() {
       return Response.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const userToken = session.accessToken
+    const userToken = session.user?.accessToken || session.accessToken
     const botToken = process.env.DISCORD_BOT_TOKEN
 
     if (!userToken) {
