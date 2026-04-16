@@ -1,14 +1,30 @@
 // 로스트아크 주간 초기화 기준 유틸리티
-// 한 주 = 수요일 00:00 KST ~ 다음 주 화요일 23:59 KST
+// 한 주 = 수요일 09:00 KST ~ 다음 주 수요일 08:59 KST
+// KST 09:00 = UTC 00:00
 
 export function getLoaWeekStart(date = new Date()) {
+  // KST = UTC+9, KST 09:00 = UTC 00:00
+  // 현재 시각을 KST로 변환
   const kst = new Date(date.getTime() + 9 * 60 * 60 * 1000)
-  const day = kst.getUTCDay() // 0=일, 3=수
+
+  // KST 기준 시각이 09:00 미만이면 전날로 취급
+  const kstHour = kst.getUTCHours()
+  const kstAdjusted = new Date(kst)
+  if (kstHour < 9) {
+    kstAdjusted.setUTCDate(kst.getUTCDate() - 1)
+  }
+
+  // KST 기준 요일 (0=일, 3=수)
+  const day = kstAdjusted.getUTCDay()
   const diffToWed = (day >= 3) ? day - 3 : day + 4
-  const wed = new Date(kst)
-  wed.setUTCDate(kst.getUTCDate() - diffToWed)
+
+  const wed = new Date(kstAdjusted)
+  wed.setUTCDate(kstAdjusted.getUTCDate() - diffToWed)
+
+  // 수요일 KST 09:00 = UTC 00:00
   wed.setUTCHours(0, 0, 0, 0)
-  return wed // UTC 기준이지만 KST 00:00을 의미
+
+  return wed
 }
 
 export function getLoaWeekRange(weekOffset = 0) {
