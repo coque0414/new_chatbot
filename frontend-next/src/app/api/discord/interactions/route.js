@@ -17,6 +17,7 @@ async function updateMessage(raid) {
 import { launchRaid } from "@/lib/raidLaunch"
 import { getMinLevel, SUPPORTER_CLASSES } from "@/lib/lostarkData"
 import { TRAIN_PRESETS } from "@/lib/trainData"
+import { getLoaWeekStart } from "@/lib/loaWeek"
 
 const DISCORD_API = "https://discord.com/api/v10"
 
@@ -1043,6 +1044,16 @@ export async function POST(request) {
           return Response.json({ type: 4, data: { content: "❌ 봇 설정에서 공고 채널을 먼저 지정해주세요.", flags: 64 } })
         }
 
+        if (guildId) {
+          const weekStart = getLoaWeekStart()
+          const weekEnd = new Date(weekStart)
+          weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
+          const weeklyCount = await Raid.countDocuments({ guildId, createdAt: { $gte: weekStart, $lt: weekEnd } })
+          if (weeklyCount >= 20) {
+            return Response.json({ type: 4, data: { content: "❌ 이번 주 레이드 공고 횟수(20회)를 초과했습니다. 다음 주 수요일에 초기화됩니다.", flags: 64 } })
+          }
+        }
+
         const firstRaid = preset.raids[0]
         const trainRaid = await Raid.create({
           isTrain:    true,
@@ -1121,6 +1132,16 @@ export async function POST(request) {
         const settings = await GuildSettings.findOne({ guildId })
         if (!settings?.announcementChannelId) {
           return Response.json({ type: 4, data: { content: "❌ 레이드 공고 채널이 설정되지 않았습니다.\n봇 설정 페이지에서 공고 채널을 먼저 설정해주세요.", flags: 64 } })
+        }
+
+        if (guildId) {
+          const weekStart = getLoaWeekStart()
+          const weekEnd = new Date(weekStart)
+          weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
+          const weeklyCount = await Raid.countDocuments({ guildId, createdAt: { $gte: weekStart, $lt: weekEnd } })
+          if (weeklyCount >= 20) {
+            return Response.json({ type: 4, data: { content: "❌ 이번 주 레이드 공고 횟수(20회)를 초과했습니다. 다음 주 수요일에 초기화됩니다.", flags: 64 } })
+          }
         }
 
         const raid = await Raid.create({

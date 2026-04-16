@@ -3,6 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import { sendRaidAnnouncement, sendTrainAnnouncement } from "@/lib/discord"
+import { getLoaWeekStart } from "@/lib/loaWeek"
 
 // ── IP 기반 Rate Limit (POST /api/raids: 1분에 10회) ──
 const raidCreateRateLimit = new Map()
@@ -61,6 +62,23 @@ export async function POST(request) {
       if (activeCount >= 20) {
         return Response.json(
           { error: "서버당 동시 활성 레이드는 최대 20개까지 가능합니다. 기존 레이드를 정리 후 생성해주세요." },
+          { status: 429 }
+        )
+      }
+    }
+
+    // 서버당 주간 생성 횟수 제한 (20회)
+    if (guildId) {
+      const weekStart = getLoaWeekStart()
+      const weekEnd = new Date(weekStart)
+      weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
+      const weeklyCount = await Raid.countDocuments({
+        guildId,
+        createdAt: { $gte: weekStart, $lt: weekEnd },
+      })
+      if (weeklyCount >= 20) {
+        return Response.json(
+          { error: "이번 주 레이드 공고 횟수(20회)를 초과했습니다. 다음 주 수요일에 초기화됩니다." },
           { status: 429 }
         )
       }

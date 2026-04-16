@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import { sendTrainRaidAnnouncement } from "@/lib/discord"
 import { getTrainPreset } from "@/lib/trainData"
+import { getLoaWeekStart } from "@/lib/loaWeek"
 
 // 기차 레이드 생성 (POST /api/train-raids)
 // ※ 웹 폼에서 호출 — Raid 컬렉션에 isTrain:true 로 저장
@@ -22,6 +23,23 @@ export async function POST(request) {
     if (!preset) return Response.json({ error: "알 수 없는 기차 구성입니다." }, { status: 400 })
 
     await connectDB()
+
+    // 서버당 주간 생성 횟수 제한 (20회)
+    if (guildId) {
+      const weekStart = getLoaWeekStart()
+      const weekEnd = new Date(weekStart)
+      weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
+      const weeklyCount = await Raid.countDocuments({
+        guildId,
+        createdAt: { $gte: weekStart, $lt: weekEnd },
+      })
+      if (weeklyCount >= 20) {
+        return Response.json(
+          { error: "이번 주 레이드 공고 횟수(20회)를 초과했습니다. 다음 주 수요일에 초기화됩니다." },
+          { status: 429 }
+        )
+      }
+    }
 
     const hostUserId = session.user.discordId || session.user.id
     const participants = hostRole && hostRole !== "none" ? [{
