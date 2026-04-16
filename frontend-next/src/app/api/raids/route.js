@@ -53,20 +53,6 @@ export async function POST(request) {
 
     await connectDB()
 
-    // 서버당 활성 레이드 수 제한
-    if (guildId) {
-      const activeCount = await Raid.countDocuments({
-        guildId,
-        status: { $in: ["모집중", "모집완료"] },
-      })
-      if (activeCount >= 20) {
-        return Response.json(
-          { error: "서버당 동시 활성 레이드는 최대 20개까지 가능합니다. 기존 레이드를 정리 후 생성해주세요." },
-          { status: 429 }
-        )
-      }
-    }
-
     // 서버당 주간 생성 횟수 제한 (20회)
     if (guildId) {
       const weekStart = getLoaWeekStart()
