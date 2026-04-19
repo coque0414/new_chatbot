@@ -238,62 +238,8 @@ export default function RaidDetailPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className={`p-4 rounded-xl ${d ? "bg-white/5" : "bg-purple-50"}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className={`text-xs font-medium ${d ? "text-gray-400" : "text-gray-500"}`}>일정</p>
-                    {isHost && ["모집중", "모집완료"].includes(raid.status) && (
-                      raid.isMobaChul ? (
-                        <div className="relative group">
-                          <button disabled className="text-xs opacity-40 cursor-not-allowed px-1">수정</button>
-                          <span className={`absolute right-0 top-full mt-1 text-xs whitespace-nowrap px-2 py-1 rounded hidden group-hover:block z-10
-                            ${d ? "bg-gray-800 text-gray-300" : "bg-gray-700 text-white"}`}>
-                            모바출 레이드는 일정 수정이 불가합니다
-                          </span>
-                        </div>
-                      ) : (
-                        <button
-                          className={`text-xs px-2 py-0.5 rounded transition-colors
-                            ${d ? "text-purple-400 hover:bg-purple-500/20" : "text-purple-600 hover:bg-purple-100"}`}
-                          onClick={() => { setEditDate(raid.date); setEditTime(raid.time); setEditingSchedule(true) }}>
-                          수정
-                        </button>
-                      )
-                    )}
-                  </div>
-                  {editingSchedule ? (
-                    <div className="space-y-2">
-                      <input
-                        type="date"
-                        value={editDate}
-                        min={todayStr}
-                        onChange={e => setEditDate(e.target.value)}
-                        className={`w-full text-sm px-2 py-1 rounded border
-                          ${d ? "bg-white/10 border-white/20 text-white" : "bg-white border-purple-200 text-gray-700"}`}
-                      />
-                      <input
-                        type="time"
-                        value={editTime}
-                        min={minTime}
-                        onChange={e => setEditTime(e.target.value)}
-                        className={`w-full text-sm px-2 py-1 rounded border
-                          ${d ? "bg-white/10 border-white/20 text-white" : "bg-white border-purple-200 text-gray-700"}`}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          disabled={savingSchedule}
-                          onClick={handleSaveSchedule}
-                          className={`flex-1 text-xs py-1.5 rounded font-medium transition-colors disabled:opacity-50
-                            ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}>
-                          {savingSchedule ? "저장 중..." : "저장"}
-                        </button>
-                        <button
-                          onClick={() => setEditingSchedule(false)}
-                          className={`flex-1 text-xs py-1.5 rounded transition-colors
-                            ${d ? "border border-white/20 hover:bg-white/10" : "border border-gray-200 hover:bg-gray-50"}`}>
-                          취소
-                        </button>
-                      </div>
-                    </div>
-                  ) : raid.isMobaChul ? (
+                  <p className={`text-xs font-medium mb-2 ${d ? "text-gray-400" : "text-gray-500"}`}>일정</p>
+                  {raid.isMobaChul ? (
                     <div className="flex items-center gap-2">
                       <Zap size={14} className={d ? "text-amber-400" : "text-purple-500"} />
                       <span className="text-sm font-medium">모바출</span>
@@ -449,47 +395,115 @@ export default function RaidDetailPage() {
 
             {/* 액션 버튼 */}
             <Card className={`border p-5 ${d ? "bg-white/[0.03] border-white/10" : "bg-white border-purple-100"}`}>
-              {actionError && (
-                <p className="text-red-400 text-xs text-center mb-3">{actionError}</p>
-              )}
-
-              {raid.status === "취소" ? (
-                <p className={`text-center text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>
-                  취소된 레이드입니다
-                </p>
-              ) : isHost ? (
-                // 주최자 버튼
-                <div className="flex gap-3">
-                  {raid.isMobaChul && (
-                    <Button
-                      className={`flex-1 py-3 font-bold
-                        ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
-                      onClick={() => alert("레이드 출발 기능 준비 중! 추후 업데이트 예정입니다.")}>
-                      ⚔️ 레이드 출발
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    disabled={cancelling}
-                    className={`${raid.isMobaChul ? "px-4" : "flex-1"} py-3 ${d ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-red-200 text-red-500 hover:bg-red-50"}`}
-                    onClick={handleCancelRaid}>
-                    {cancelling ? "⏳" : <X size={16} />}
-                  </Button>
-                </div>
-              ) : isParticipant ? (
-                // 참가자 버튼 (본인 참가 취소)
-                <Button
-                  variant="outline"
-                  disabled={leaving}
-                  className={`w-full py-3 ${d ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-red-200 text-red-500 hover:bg-red-50"}`}
-                  onClick={handleLeave}>
-                  {leaving ? "⏳" : "❌"} 참가 취소
-                </Button>
+              {editingSchedule ? (
+                <>
+                  {actionError && <p className="text-red-400 text-xs text-center mb-3">{actionError}</p>}
+                  <p className={`text-sm font-medium mb-3 ${d ? "text-white" : "text-gray-800"}`}>일정 수정</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className={`block text-xs mb-1 ${d ? "text-gray-400" : "text-gray-500"}`}>날짜</label>
+                      <input type="date" value={editDate} min={todayStr}
+                        onChange={e => setEditDate(e.target.value)}
+                        className={`w-full text-sm px-3 py-2 rounded-xl border
+                          ${d ? "bg-white/5 border-white/10 text-white" : "bg-white border-purple-200 text-gray-700"}`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-xs mb-1 ${d ? "text-gray-400" : "text-gray-500"}`}>시간</label>
+                      <input type="time" value={editTime} min={minTime}
+                        onChange={e => setEditTime(e.target.value)}
+                        className={`w-full text-sm px-3 py-2 rounded-xl border
+                          ${d ? "bg-white/5 border-white/10 text-white" : "bg-white border-purple-200 text-gray-700"}`}
+                      />
+                    </div>
+                    <div className="flex gap-3 pt-1">
+                      <Button disabled={savingSchedule}
+                        onClick={handleSaveSchedule}
+                        className={`flex-1 py-3 font-bold
+                          ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}>
+                        {savingSchedule ? "저장 중..." : "저장"}
+                      </Button>
+                      <Button variant="outline"
+                        onClick={() => { setEditingSchedule(false); setActionError(null) }}
+                        className={`flex-1 py-3 ${d ? "border-white/10 text-gray-400" : "border-gray-200 text-gray-500"}`}>
+                        취소
+                      </Button>
+                    </div>
+                  </div>
+                </>
               ) : (
-                // 미참가자 안내
-                <p className={`text-center text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>
-                  Discord 채널에서 참가 버튼을 눌러 참가하세요.
-                </p>
+                <>
+                  {actionError && (
+                    <p className="text-red-400 text-xs text-center mb-3">{actionError}</p>
+                  )}
+
+                  {raid.status === "취소" ? (
+                    <p className={`text-center text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>
+                      취소된 레이드입니다
+                    </p>
+                  ) : isHost ? (
+                    // 주최자 버튼
+                    <>
+                      <div className="flex gap-3">
+                        {["모집중", "모집완료"].includes(raid.status) && (
+                          <Button
+                            disabled={raid.isMobaChul}
+                            title={raid.isMobaChul ? "모바출 레이드는 일정 수정이 불가합니다" : ""}
+                            className={`flex-1 py-3 font-bold transition-all
+                              ${raid.isMobaChul
+                                ? "opacity-40 cursor-not-allowed bg-gray-500 text-white"
+                                : d
+                                  ? "bg-purple-500/80 hover:bg-purple-500 text-white"
+                                  : "bg-purple-600 hover:bg-purple-500 text-white"
+                              }`}
+                            onClick={() => {
+                              if (!raid.isMobaChul) {
+                                setEditDate(raid.date)
+                                setEditTime(raid.time)
+                                setEditingSchedule(true)
+                              }
+                            }}>
+                            📅 일정 수정
+                          </Button>
+                        )}
+                        {raid.isMobaChul && (
+                          <Button
+                            className={`flex-1 py-3 font-bold
+                              ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
+                            onClick={() => alert("레이드 출발 기능 준비 중! 추후 업데이트 예정입니다.")}>
+                            ⚔️ 레이드 출발
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          disabled={cancelling}
+                          className={`${(["모집중", "모집완료"].includes(raid.status) || raid.isMobaChul) ? "px-4" : "flex-1"} py-3 ${d ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-red-200 text-red-500 hover:bg-red-50"}`}
+                          onClick={handleCancelRaid}>
+                          {cancelling ? "⏳" : <X size={16} />}
+                        </Button>
+                      </div>
+                      {["모집중", "모집완료"].includes(raid.status) && raid.isMobaChul && (
+                        <p className={`text-xs text-center mt-2 ${d ? "text-gray-500" : "text-gray-400"}`}>
+                          모바출 레이드는 일정 수정이 불가합니다
+                        </p>
+                      )}
+                    </>
+                  ) : isParticipant ? (
+                    // 참가자 버튼 (본인 참가 취소)
+                    <Button
+                      variant="outline"
+                      disabled={leaving}
+                      className={`w-full py-3 ${d ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-red-200 text-red-500 hover:bg-red-50"}`}
+                      onClick={handleLeave}>
+                      {leaving ? "⏳" : "❌"} 참가 취소
+                    </Button>
+                  ) : (
+                    // 미참가자 안내
+                    <p className={`text-center text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>
+                      Discord 채널에서 참가 버튼을 눌러 참가하세요.
+                    </p>
+                  )}
+                </>
               )}
             </Card>
           </div>

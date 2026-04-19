@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { ChevronLeft, Calendar, Clock, Users, Zap, Hash, Crown, Sword, Shield, X, Train } from "lucide-react"
+import { ChevronLeft, Calendar, Clock, Users, Zap, Hash, Crown, Sword, Shield, X } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import { getTheme } from "@/lib/themes"
 
@@ -203,62 +203,8 @@ export default function TrainRaidDetailPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className={`p-4 rounded-xl ${d ? "bg-white/5" : "bg-purple-50"}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className={`text-xs font-medium ${d ? "text-gray-400" : "text-gray-500"}`}>일정</p>
-                    {isHost && ["모집중", "모집완료"].includes(trainRaid.status) && (
-                      trainRaid.isMobaChul ? (
-                        <div className="relative group">
-                          <button disabled className="text-xs opacity-40 cursor-not-allowed px-1">수정</button>
-                          <span className={`absolute right-0 top-full mt-1 text-xs whitespace-nowrap px-2 py-1 rounded hidden group-hover:block z-10
-                            ${d ? "bg-gray-800 text-gray-300" : "bg-gray-700 text-white"}`}>
-                            모바출 레이드는 일정 수정이 불가합니다
-                          </span>
-                        </div>
-                      ) : (
-                        <button
-                          className={`text-xs px-2 py-0.5 rounded transition-colors
-                            ${d ? "text-purple-400 hover:bg-purple-500/20" : "text-purple-600 hover:bg-purple-100"}`}
-                          onClick={() => { setEditDate(trainRaid.date); setEditTime(trainRaid.time); setEditingSchedule(true) }}>
-                          수정
-                        </button>
-                      )
-                    )}
-                  </div>
-                  {editingSchedule ? (
-                    <div className="space-y-2">
-                      <input
-                        type="date"
-                        value={editDate}
-                        min={todayStr}
-                        onChange={e => setEditDate(e.target.value)}
-                        className={`w-full text-sm px-2 py-1 rounded border
-                          ${d ? "bg-white/10 border-white/20 text-white" : "bg-white border-purple-200 text-gray-700"}`}
-                      />
-                      <input
-                        type="time"
-                        value={editTime}
-                        min={minTime}
-                        onChange={e => setEditTime(e.target.value)}
-                        className={`w-full text-sm px-2 py-1 rounded border
-                          ${d ? "bg-white/10 border-white/20 text-white" : "bg-white border-purple-200 text-gray-700"}`}
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          disabled={savingSchedule}
-                          onClick={handleSaveSchedule}
-                          className={`flex-1 text-xs py-1.5 rounded font-medium transition-colors disabled:opacity-50
-                            ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}>
-                          {savingSchedule ? "저장 중..." : "저장"}
-                        </button>
-                        <button
-                          onClick={() => setEditingSchedule(false)}
-                          className={`flex-1 text-xs py-1.5 rounded transition-colors
-                            ${d ? "border border-white/20 hover:bg-white/10" : "border border-gray-200 hover:bg-gray-50"}`}>
-                          취소
-                        </button>
-                      </div>
-                    </div>
-                  ) : trainRaid.isMobaChul ? (
+                  <p className={`text-xs font-medium mb-2 ${d ? "text-gray-400" : "text-gray-500"}`}>일정</p>
+                  {trainRaid.isMobaChul ? (
                     <div className="flex items-center gap-2">
                       <Zap size={14} className={d ? "text-amber-400" : "text-purple-500"} />
                       <span className="text-sm font-medium">모바출</span>
@@ -389,19 +335,87 @@ export default function TrainRaidDetailPage() {
             {/* 액션 카드 (주최자만) */}
             {isHost && trainRaid.status !== "취소" && trainRaid.status !== "출발완료" && (
               <Card className={`border p-5 ${d ? "bg-white/[0.03] border-white/10" : "bg-white border-purple-100"}`}>
-                {actionError && <p className="text-red-400 text-xs text-center mb-3">{actionError}</p>}
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    disabled={cancelling}
-                    className={`px-4 py-3 ${d ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-red-200 text-red-500 hover:bg-red-50"}`}
-                    onClick={handleCancelRaid}>
-                    {cancelling ? "⏳" : <X size={16} />}
-                  </Button>
-                  <p className={`flex-1 text-xs self-center ${d ? "text-gray-500" : "text-gray-400"}`}>
-                    N종 레이드 참가/취소는 Discord 버튼을 통해 진행하세요.
-                  </p>
-                </div>
+                {editingSchedule ? (
+                  <>
+                    {actionError && <p className="text-red-400 text-xs text-center mb-3">{actionError}</p>}
+                    <p className={`text-sm font-medium mb-3 ${d ? "text-white" : "text-gray-800"}`}>일정 수정</p>
+                    <div className="space-y-3">
+                      <div>
+                        <label className={`block text-xs mb-1 ${d ? "text-gray-400" : "text-gray-500"}`}>날짜</label>
+                        <input type="date" value={editDate} min={todayStr}
+                          onChange={e => setEditDate(e.target.value)}
+                          className={`w-full text-sm px-3 py-2 rounded-xl border
+                            ${d ? "bg-white/5 border-white/10 text-white" : "bg-white border-purple-200 text-gray-700"}`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block text-xs mb-1 ${d ? "text-gray-400" : "text-gray-500"}`}>시간</label>
+                        <input type="time" value={editTime} min={minTime}
+                          onChange={e => setEditTime(e.target.value)}
+                          className={`w-full text-sm px-3 py-2 rounded-xl border
+                            ${d ? "bg-white/5 border-white/10 text-white" : "bg-white border-purple-200 text-gray-700"}`}
+                        />
+                      </div>
+                      <div className="flex gap-3 pt-1">
+                        <Button disabled={savingSchedule}
+                          onClick={handleSaveSchedule}
+                          className={`flex-1 py-3 font-bold
+                            ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}>
+                          {savingSchedule ? "저장 중..." : "저장"}
+                        </Button>
+                        <Button variant="outline"
+                          onClick={() => { setEditingSchedule(false); setActionError(null) }}
+                          className={`flex-1 py-3 ${d ? "border-white/10 text-gray-400" : "border-gray-200 text-gray-500"}`}>
+                          취소
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {actionError && <p className="text-red-400 text-xs text-center mb-3">{actionError}</p>}
+                    <div className="flex gap-3">
+                      {["모집중", "모집완료"].includes(trainRaid.status) && (
+                        <Button
+                          disabled={trainRaid.isMobaChul}
+                          title={trainRaid.isMobaChul ? "모바출 레이드는 일정 수정이 불가합니다" : ""}
+                          className={`flex-1 py-3 font-bold transition-all
+                            ${trainRaid.isMobaChul
+                              ? "opacity-40 cursor-not-allowed bg-gray-500 text-white"
+                              : d
+                                ? "bg-purple-500/80 hover:bg-purple-500 text-white"
+                                : "bg-purple-600 hover:bg-purple-500 text-white"
+                            }`}
+                          onClick={() => {
+                            if (!trainRaid.isMobaChul) {
+                              setEditDate(trainRaid.date)
+                              setEditTime(trainRaid.time)
+                              setEditingSchedule(true)
+                            }
+                          }}>
+                          📅 일정 수정
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        disabled={cancelling}
+                        className={`px-4 py-3 ${d ? "border-red-500/30 text-red-400 hover:bg-red-500/10" : "border-red-200 text-red-500 hover:bg-red-50"}`}
+                        onClick={handleCancelRaid}>
+                        {cancelling ? "⏳" : <X size={16} />}
+                      </Button>
+                      {!["모집중", "모집완료"].includes(trainRaid.status) && (
+                        <p className={`flex-1 text-xs self-center ${d ? "text-gray-500" : "text-gray-400"}`}>
+                          N종 레이드 참가/취소는 Discord 버튼을 통해 진행하세요.
+                        </p>
+                      )}
+                    </div>
+                    {["모집중", "모집완료"].includes(trainRaid.status) && trainRaid.isMobaChul && (
+                      <p className={`text-xs text-center mt-2 ${d ? "text-gray-500" : "text-gray-400"}`}>
+                        모바출 레이드는 일정 수정이 불가합니다
+                      </p>
+                    )}
+                  </>
+                )}
               </Card>
             )}
 
