@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
+import { updateDiscordMessage, updateTrainDiscordMessage } from "@/lib/discord"
 
 const DISCORD_API = "https://discord.com/api/v10"
 
@@ -33,11 +34,8 @@ export async function PATCH(request, { params }) {
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
 
     const { id } = await params
-    const { notifyMinutesBefore } = await request.json()
-
-    if (![10, 20, 30].includes(notifyMinutesBefore)) {
-      return Response.json({ error: "유효하지 않은 알림 시간입니다 (10/20/30만 허용)" }, { status: 400 })
-    }
+    const body = await request.json()
+    const { notifyMinutesBefore, date, time } = body
 
     await connectDB()
     const raid = await Raid.findById(id)
@@ -48,6 +46,25 @@ export async function PATCH(request, { params }) {
       return Response.json({ error: "주최자만 변경할 수 있습니다" }, { status: 403 })
     }
 
+    // 일정 수정
+    if (date !== undefined && time !== undefined) {
+      const updated = await Raid.findByIdAndUpdate(id, { date, time }, { new: true })
+      try {
+        if (updated.isTrain) {
+          await updateTrainDiscordMessage(updated)
+        } else {
+          await updateDiscordMessage(updated)
+        }
+      } catch (e) {
+        console.error("Discord 메시지 업데이트 실패:", e)
+      }
+      return Response.json({ success: true, raid: updated })
+    }
+
+    // 알림 시간 수정
+    if (![10, 20, 30].includes(notifyMinutesBefore)) {
+      return Response.json({ error: "유효하지 않은 알림 시간입니다 (10/20/30만 허용)" }, { status: 400 })
+    }
     const updated = await Raid.findByIdAndUpdate(id, { notifyMinutesBefore }, { new: true })
     return Response.json({ success: true, raid: updated })
 

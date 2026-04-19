@@ -23,6 +23,10 @@ export default function RaidDetailPage() {
   const [actionError, setActionError] = useState(null)
   const [cancelling, setCancelling] = useState(false)
   const [leaving, setLeaving] = useState(false)
+  const [editingSchedule, setEditingSchedule] = useState(false)
+  const [editDate, setEditDate] = useState("")
+  const [editTime, setEditTime] = useState("")
+  const [savingSchedule, setSavingSchedule] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -88,6 +92,11 @@ export default function RaidDetailPage() {
   const dealers = raid?.participants?.filter(p => p.role === "dealer") || []
   const supporters = raid?.participants?.filter(p => p.role === "support") || []
 
+  const todayStr = new Date(Date.now() + 9*60*60*1000).toISOString().slice(0, 10)
+  const minTime = editDate === todayStr
+    ? new Date(Date.now() + 9*60*60*1000).toISOString().slice(11, 16)
+    : "00:00"
+
   // 참가자 참가 취소 (본인 참가 취소)
   const handleLeave = async () => {
     if (!confirm("참가를 취소하시겠습니까?")) return
@@ -107,6 +116,36 @@ export default function RaidDetailPage() {
       setActionError(e.message)
     } finally {
       setLeaving(false)
+    }
+  }
+
+  const handleSaveSchedule = async () => {
+    const todayKST = new Date(Date.now() + 9*60*60*1000)
+    const todayStr = todayKST.toISOString().slice(0, 10)
+    const nowTimeStr = todayKST.toISOString().slice(11, 16)
+    if (editDate < todayStr || (editDate === todayStr && editTime <= nowTimeStr)) {
+      setActionError("현재 시각 이후로만 설정할 수 있습니다.")
+      return
+    }
+    setSavingSchedule(true)
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/raids/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: editDate, time: editTime }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setRaid(data.raid)
+        setEditingSchedule(false)
+      } else {
+        setActionError(data.error)
+      }
+    } catch (e) {
+      setActionError(e.message)
+    } finally {
+      setSavingSchedule(false)
     }
   }
 
@@ -199,8 +238,62 @@ export default function RaidDetailPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className={`p-4 rounded-xl ${d ? "bg-white/5" : "bg-purple-50"}`}>
-                  <p className={`text-xs font-medium mb-2 ${d ? "text-gray-400" : "text-gray-500"}`}>일정</p>
-                  {raid.isMobaChul ? (
+                  <div className="flex items-center justify-between mb-2">
+                    <p className={`text-xs font-medium ${d ? "text-gray-400" : "text-gray-500"}`}>일정</p>
+                    {isHost && ["모집중", "모집완료"].includes(raid.status) && (
+                      raid.isMobaChul ? (
+                        <div className="relative group">
+                          <button disabled className="text-xs opacity-40 cursor-not-allowed px-1">수정</button>
+                          <span className={`absolute right-0 top-full mt-1 text-xs whitespace-nowrap px-2 py-1 rounded hidden group-hover:block z-10
+                            ${d ? "bg-gray-800 text-gray-300" : "bg-gray-700 text-white"}`}>
+                            모바출 레이드는 일정 수정이 불가합니다
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          className={`text-xs px-2 py-0.5 rounded transition-colors
+                            ${d ? "text-purple-400 hover:bg-purple-500/20" : "text-purple-600 hover:bg-purple-100"}`}
+                          onClick={() => { setEditDate(raid.date); setEditTime(raid.time); setEditingSchedule(true) }}>
+                          수정
+                        </button>
+                      )
+                    )}
+                  </div>
+                  {editingSchedule ? (
+                    <div className="space-y-2">
+                      <input
+                        type="date"
+                        value={editDate}
+                        min={todayStr}
+                        onChange={e => setEditDate(e.target.value)}
+                        className={`w-full text-sm px-2 py-1 rounded border
+                          ${d ? "bg-white/10 border-white/20 text-white" : "bg-white border-purple-200 text-gray-700"}`}
+                      />
+                      <input
+                        type="time"
+                        value={editTime}
+                        min={minTime}
+                        onChange={e => setEditTime(e.target.value)}
+                        className={`w-full text-sm px-2 py-1 rounded border
+                          ${d ? "bg-white/10 border-white/20 text-white" : "bg-white border-purple-200 text-gray-700"}`}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          disabled={savingSchedule}
+                          onClick={handleSaveSchedule}
+                          className={`flex-1 text-xs py-1.5 rounded font-medium transition-colors disabled:opacity-50
+                            ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}>
+                          {savingSchedule ? "저장 중..." : "저장"}
+                        </button>
+                        <button
+                          onClick={() => setEditingSchedule(false)}
+                          className={`flex-1 text-xs py-1.5 rounded transition-colors
+                            ${d ? "border border-white/20 hover:bg-white/10" : "border border-gray-200 hover:bg-gray-50"}`}>
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  ) : raid.isMobaChul ? (
                     <div className="flex items-center gap-2">
                       <Zap size={14} className={d ? "text-amber-400" : "text-purple-500"} />
                       <span className="text-sm font-medium">모바출</span>
