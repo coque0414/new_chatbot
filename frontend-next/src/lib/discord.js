@@ -9,6 +9,62 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
 
   const supporterSlots = raid.maxPlayers / 4
   const dealerSlots = raid.maxPlayers - supporterSlots
+  const totalRounds = raid.totalRounds || 1
+
+  // ── N수 레이드 초기 공고 ──
+  if (totalRounds >= 2) {
+    const roundFields = Array.from({ length: totalRounds }, (_, i) => ({
+      name: `━━ ${i + 1}수 ━━`,
+      value: `⚔️ 딜러 (0/${dealerSlots}): -\n🛡️ 서포터 (0/${supporterSlots}): -`,
+      inline: false,
+    }))
+
+    const embed = {
+      title: `${raid.raidAlias} ${raid.difficulty} ${totalRounds}수 모집`,
+      description: `${raid.raidName} 파티원을 모집합니다`,
+      color: 0x9B59B6,
+      fields: [
+        {
+          name: "레이드 정보",
+          value: `난이도: ${raid.difficulty} | 인원: ${raid.maxPlayers}명 (딜러 ${dealerSlots} / 서포터 ${supporterSlots})\n${totalRounds}수 반복`,
+          inline: false,
+        },
+        ...(!raid.isMobaChul ? [{ name: "일정", value: `${raid.date} ${raid.time}`, inline: false }] : []),
+        { name: "주최자", value: hostName, inline: false },
+        ...roundFields,
+      ],
+      footer: { text: `LostArk 레이드 · ID: ${raidId}` },
+      timestamp: new Date().toISOString(),
+    }
+
+    const components = [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 3, label: "⚔️ 레이드 참가", custom_id: `join_nsu_${raidId}` },
+          { type: 2, style: 4, label: "❌ 참가 취소", custom_id: `leave_${raidId}` },
+        ],
+      },
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raidId}` },
+          { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raidId}` },
+        ],
+      },
+    ]
+
+    const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ embeds: [embed], components }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.message)
+    return data.id
+  }
+
+  // ── 단일 레이드 초기 공고 ──
   const dealers = initialParticipants.filter(p => p.role === "dealer")
   const supporters = initialParticipants.filter(p => p.role === "support")
 
@@ -551,11 +607,90 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// N수 레이드 Discord 메시지 업데이트
+async function updateNsuDiscordMessage(raid) {
+  const token = process.env.DISCORD_BOT_TOKEN
+  const raidId = raid._id.toString()
+  const supporterSlots = raid.maxPlayers / 4
+  const dealerSlots = raid.maxPlayers - supporterSlots
+
+  const embedColor = {
+    "모집중":   0x9B59B6,
+    "모집완료": 0x3498DB,
+    "취소":     0x95A5A6,
+  }
+
+  const roundFields = (raid.rounds || []).map(round => {
+    const d = round.participants.filter(p => p.role === "dealer")
+    const s = round.participants.filter(p => p.role === "support")
+    const dealerText = d.length > 0
+      ? d.map(p => p.characterName ? `${p.characterName}(${p.characterClass}) Lv.${p.characterLevel}` : p.userName).join(", ")
+      : "-"
+    const supporterText = s.length > 0
+      ? s.map(p => p.characterName ? `${p.characterName}(${p.characterClass}) Lv.${p.characterLevel}` : p.userName).join(", ")
+      : "-"
+    return {
+      name: `━━ ${round.order}수 ━━`,
+      value: `⚔️ 딜러 (${d.length}/${dealerSlots}): ${dealerText}\n🛡️ 서포터 (${s.length}/${supporterSlots}): ${supporterText}`,
+      inline: false,
+    }
+  })
+
+  const embedData = {
+    title: `${raid.raidAlias} ${raid.difficulty} ${raid.totalRounds}수 모집`,
+    description: `${raid.raidName} 파티원을 모집합니다`,
+    color: embedColor[raid.status] ?? 0x9B59B6,
+    fields: [
+      {
+        name: "레이드 정보",
+        value: `난이도: ${raid.difficulty} | 인원: ${raid.maxPlayers}명 (딜러 ${dealerSlots} / 서포터 ${supporterSlots})\n${raid.totalRounds}수 반복`,
+        inline: false,
+      },
+      ...(!raid.isMobaChul ? [{ name: "일정", value: `${raid.date} ${raid.time}`, inline: false }] : []),
+      { name: "주최자", value: raid.hostName, inline: false },
+      ...roundFields,
+    ],
+    footer: { text: `LostArk 레이드 · ID: ${raidId}` },
+    timestamp: new Date().toISOString(),
+  }
+
+  let components = []
+  if (raid.status !== "취소") {
+    const expired = isExpired(raid)
+    const isFull = raid.status === "모집완료"
+    components = [
+      {
+        type: 1,
+        components: [
+          ...(!isFull ? [{ type: 2, style: 3, label: "⚔️ 레이드 참가", custom_id: `join_nsu_${raidId}`, disabled: expired }] : []),
+          { type: 2, style: 4, label: "❌ 참가 취소", custom_id: `leave_${raidId}`, disabled: expired },
+        ],
+      },
+      {
+        type: 1,
+        components: [
+          { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raidId}`, disabled: expired },
+          { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raidId}` },
+        ],
+      },
+    ]
+  }
+
+  await fetch(`${DISCORD_API}/channels/${raid.discordChannelId}/messages/${raid.discordMessageId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ embeds: [embedData], components }),
+  })
+}
+
 export async function updateDiscordMessage(raid) {
   if (!raid.discordChannelId || !raid.discordMessageId) return
 
   // isTrain 레이드는 전용 함수로 처리
   if (raid.isTrain) return updateTrainDiscordMessage(raid)
+
+  // N수 레이드는 전용 함수로 처리
+  if (raid.totalRounds >= 2) return updateNsuDiscordMessage(raid)
 
   const token = process.env.DISCORD_BOT_TOKEN
   const supporterSlots = raid.maxPlayers / 4

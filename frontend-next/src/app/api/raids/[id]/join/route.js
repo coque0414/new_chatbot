@@ -12,11 +12,8 @@ export async function POST(request, { params }) {
     }
 
     const { id } = await params
-    const { role } = await request.json()
-
-    if (!["dealer", "support"].includes(role)) {
-      return Response.json({ error: "올바른 역할을 선택하세요" }, { status: 400 })
-    }
+    const body = await request.json()
+    const { role, roundSelections } = body
 
     await connectDB()
     const raid = await Raid.findById(id)
@@ -25,11 +22,93 @@ export async function POST(request, { params }) {
       return Response.json({ error: "레이드를 찾을 수 없습니다" }, { status: 404 })
     }
 
+    const userId = session.user.discordId || session.user.id
+
+    // ── N수 레이드 참가 ──────────────────────────────────────────────────────
+    if (roundSelections && Array.isArray(roundSelections)) {
+      if (!raid.totalRounds || raid.totalRounds < 2) {
+        return Response.json({ error: "N수 레이드가 아닙니다" }, { status: 400 })
+      }
+      if (raid.status !== "모집중") {
+        return Response.json({ error: "모집이 마감된 레이드입니다" }, { status: 400 })
+      }
+
+      const alreadyInAnyRound = raid.rounds.some(r =>
+        r.participants.some(p => p.userId === userId)
+      )
+      if (alreadyInAnyRound) {
+        return Response.json({ error: "이미 참가 신청한 레이드입니다" }, { status: 400 })
+      }
+      if (roundSelections.length !== raid.totalRounds) {
+        return Response.json({ error: "모든 수의 캐릭터를 선택해주세요" }, { status: 400 })
+      }
+
+      const supporterSlots = raid.maxPlayers / 4
+      const dealerSlots = raid.maxPlayers - supporterSlots
+
+      for (const sel of roundSelections) {
+        const round = raid.rounds.find(r => r.order === sel.order)
+        if (!round) {
+          return Response.json({ error: `${sel.order}수 데이터가 없습니다` }, { status: 400 })
+        }
+
+        const roundDealers = round.participants.filter(p => p.role === "dealer")
+        const roundSupporters = round.participants.filter(p => p.role === "support")
+
+        if (sel.role === "dealer" && roundDealers.length >= dealerSlots) {
+          return Response.json({ error: `${sel.order}수 딜러 자리가 꽉 찼습니다` }, { status: 400 })
+        }
+        if (sel.role === "support" && roundSupporters.length >= supporterSlots) {
+          return Response.json({ error: `${sel.order}수 서포터 자리가 꽉 찼습니다` }, { status: 400 })
+        }
+
+        if (sel.role === "dealer" && raid.maxPlayers === 4) {
+          const existing = new Set(roundDealers.map(p => p.characterClass).filter(Boolean))
+          if (existing.has(sel.characterClass)) {
+            return Response.json({ error: `${sel.order}수에 ${sel.characterClass}가 이미 있습니다` }, { status: 400 })
+          }
+        }
+        if (sel.role === "dealer" && raid.maxPlayers === 8) {
+          const classCount = {}
+          roundDealers.forEach(p => { if (p.characterClass) classCount[p.characterClass] = (classCount[p.characterClass] || 0) + 1 })
+          if ((classCount[sel.characterClass] || 0) >= 2) {
+            return Response.json({ error: `${sel.order}수에 ${sel.characterClass}가 이미 2명입니다` }, { status: 400 })
+          }
+        }
+
+        round.participants.push({
+          userId,
+          userName: session.user.name,
+          userImage: session.user.image,
+          role: sel.role,
+          characterName: sel.characterName || null,
+          characterClass: sel.characterClass || null,
+          characterLevel: sel.characterLevel || null,
+          characterCombatPower: sel.characterCombatPower || null,
+        })
+      }
+
+      const allFull = raid.rounds.every(r => {
+        const d = r.participants.filter(p => p.role === "dealer").length
+        const s = r.participants.filter(p => p.role === "support").length
+        return d >= dealerSlots && s >= supporterSlots
+      })
+      if (allFull) raid.status = "모집완료"
+
+      await raid.save()
+      updateDiscordMessage(raid).catch(e => console.error("N수 Discord 업데이트 실패:", e))
+      return Response.json({ success: true, raid })
+    }
+
+    // ── 기존 단일 레이드 참가 ───────────────────────────────────────────────
+    if (!["dealer", "support"].includes(role)) {
+      return Response.json({ error: "올바른 역할을 선택하세요" }, { status: 400 })
+    }
+
     if (raid.status !== "모집중") {
       return Response.json({ error: "모집이 마감된 레이드입니다" }, { status: 400 })
     }
 
-    const userId = session.user.discordId || session.user.id
     const alreadyJoined = raid.participants.some(p => p.userId === userId)
     if (alreadyJoined) {
       return Response.json({ error: "이미 참가 신청한 레이드입니다" }, { status: 400 })

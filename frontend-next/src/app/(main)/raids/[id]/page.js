@@ -10,6 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { ChevronLeft, Calendar, Clock, Users, Zap, Hash, Crown, Sword, Shield, X } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import { getTheme } from "@/lib/themes"
+import { SUPPORTER_CLASSES, getMinLevel } from "@/lib/lostarkData"
 
 export default function RaidDetailPage() {
   const { data: session, status } = useSession()
@@ -27,6 +28,14 @@ export default function RaidDetailPage() {
   const [editDate, setEditDate] = useState("")
   const [editTime, setEditTime] = useState("")
   const [savingSchedule, setSavingSchedule] = useState(false)
+
+  // N수 레이드 참가 모달
+  const [nsuModal, setNsuModal] = useState(false)
+  const [nsuSelections, setNsuSelections] = useState({})
+  const [nsuJoining, setNsuJoining] = useState(false)
+  const [nsuError, setNsuError] = useState(null)
+  const [nsuChars, setNsuChars] = useState([])
+  const [nsuCharsLoading, setNsuCharsLoading] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -167,6 +176,87 @@ export default function RaidDetailPage() {
       alert(e.message)
     } finally {
       setCancelling(false)
+    }
+  }
+
+  const openNsuModal = async () => {
+    const initSelections = {}
+    for (let i = 1; i <= raid.totalRounds; i++) initSelections[i] = { role: "dealer" }
+    setNsuSelections(initSelections)
+    setNsuError(null)
+    setNsuModal(true)
+    setNsuCharsLoading(true)
+    try {
+      const res = await fetch("/api/characters")
+      const data = await res.json()
+      const accounts = data.accounts || []
+      const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
+      const merged = []
+      accounts.forEach(acc => {
+        acc.characters.forEach(c => {
+          if (!minLevel || c.level >= minLevel) merged.push({ ...c, accountIndex: acc.accountIndex })
+        })
+      })
+      merged.sort((a, b) => b.level - a.level)
+      setNsuChars(merged)
+    } catch {
+      setNsuError("캐릭터를 불러오지 못했습니다.")
+    } finally {
+      setNsuCharsLoading(false)
+    }
+  }
+
+  const handleNsuCharSelect = (order, value) => {
+    if (!value) return
+    const [charName, charClass, charLevelStr, combatPowerStr] = value.split("||")
+    const isSupporter = SUPPORTER_CLASSES.includes(charClass)
+    setNsuSelections(prev => ({
+      ...prev,
+      [order]: {
+        ...prev[order],
+        characterName: charName,
+        characterClass: charClass,
+        characterLevel: parseFloat(charLevelStr),
+        characterCombatPower: combatPowerStr ? parseInt(combatPowerStr) : null,
+        role: isSupporter ? "support" : "dealer",
+      },
+    }))
+  }
+
+  const handleNsuRoleToggle = (order, role) => {
+    setNsuSelections(prev => ({ ...prev, [order]: { ...prev[order], role } }))
+  }
+
+  const handleNsuSubmit = async () => {
+    for (let i = 1; i <= raid.totalRounds; i++) {
+      if (!nsuSelections[i]?.characterName) {
+        setNsuError(`${i}수 캐릭터를 선택해주세요`)
+        return
+      }
+    }
+    setNsuJoining(true)
+    setNsuError(null)
+    try {
+      const roundSelections = Array.from({ length: raid.totalRounds }, (_, i) => ({
+        order: i + 1,
+        ...nsuSelections[i + 1],
+      }))
+      const res = await fetch(`/api/raids/${params.id}/join`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roundSelections }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNsuModal(false)
+        setRaid(data.raid)
+      } else {
+        setNsuError(data.error)
+      }
+    } catch {
+      setNsuError("서버 오류가 발생했습니다.")
+    } finally {
+      setNsuJoining(false)
     }
   }
 
@@ -501,7 +591,7 @@ export default function RaidDetailPage() {
                     <Button
                       className={`w-full py-3 font-bold
                         ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
-                      onClick={() => alert('3단계에서 구현 예정')}>
+                      onClick={openNsuModal}>
                       ⚔️ 레이드 참가
                     </Button>
                   ) : (
@@ -516,6 +606,97 @@ export default function RaidDetailPage() {
           </div>
         )}
       </div>
+
+      {/* N수 레이드 참가 모달 */}
+      {nsuModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setNsuModal(false)} />
+          <div className={`relative w-full max-w-md rounded-2xl border p-6 z-10
+            ${d ? "bg-gray-900 border-white/10" : "bg-white border-purple-200"}`}>
+            <h3 className={`text-lg font-bold mb-5 ${d ? "text-white" : "text-gray-800"}`}>
+              ⚔️ {raid?.totalRounds}수 레이드 참가
+            </h3>
+
+            {nsuCharsLoading ? (
+              <p className={`text-sm text-center py-8 animate-pulse ${d ? "text-gray-500" : "text-gray-400"}`}>
+                캐릭터 불러오는 중...
+              </p>
+            ) : (
+              <div className="space-y-5 max-h-96 overflow-y-auto pr-1">
+                {Array.from({ length: raid?.totalRounds || 0 }, (_, i) => {
+                  const order = i + 1
+                  const sel = nsuSelections[order] || {}
+                  const charValue = sel.characterName
+                    ? `${sel.characterName}||${sel.characterClass}||${sel.characterLevel}||${sel.characterCombatPower ?? ""}`
+                    : ""
+                  return (
+                    <div key={order}>
+                      <p className={`text-sm font-bold mb-2 ${d ? "text-white" : "text-gray-800"}`}>
+                        {order}수
+                      </p>
+                      <select
+                        value={charValue}
+                        onChange={e => handleNsuCharSelect(order, e.target.value)}
+                        className={`w-full text-sm px-3 py-2 rounded-xl border mb-2
+                          ${d ? "bg-white/5 border-white/10 text-white" : "bg-white border-purple-200 text-gray-700"}`}>
+                        <option value="">캐릭터를 선택하세요</option>
+                        {nsuChars.map((c, idx) => (
+                          <option key={idx} value={`${c.name}||${c.class}||${c.level}||${c.combatPower ?? ""}`}>
+                            [계정{c.accountIndex}] {c.name} · {c.class} · Lv.{c.level}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleNsuRoleToggle(order, "dealer")}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors
+                            ${sel.role === "dealer"
+                              ? d ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-red-50 text-red-600 border border-red-200"
+                              : d ? "bg-white/5 text-gray-400 hover:bg-white/10 border border-transparent" : "bg-gray-50 text-gray-500 hover:bg-gray-100 border border-transparent"
+                            }`}>
+                          ⚔️ 딜러
+                        </button>
+                        <button
+                          onClick={() => handleNsuRoleToggle(order, "support")}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors
+                            ${sel.role === "support"
+                              ? d ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "bg-blue-50 text-blue-600 border border-blue-200"
+                              : d ? "bg-white/5 text-gray-400 hover:bg-white/10 border border-transparent" : "bg-gray-50 text-gray-500 hover:bg-gray-100 border border-transparent"
+                            }`}>
+                          🛡️ 서포터
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {nsuError && (
+              <p className="text-red-400 text-xs text-center mt-3">{nsuError}</p>
+            )}
+
+            <div className="flex gap-3 mt-5">
+              <Button
+                disabled={nsuJoining || nsuCharsLoading}
+                onClick={handleNsuSubmit}
+                className={`flex-1 py-3 font-bold
+                  ${nsuJoining || nsuCharsLoading
+                    ? "opacity-40 cursor-not-allowed bg-gray-500 text-white"
+                    : d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"
+                  }`}>
+                {nsuJoining ? "신청 중..." : "참가 신청"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setNsuModal(false)}
+                className={`flex-1 py-3 ${d ? "border-white/10 text-gray-400" : "border-gray-200 text-gray-500"}`}>
+                취소
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 }

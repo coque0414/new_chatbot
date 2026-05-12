@@ -2,6 +2,7 @@ import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import GuildSettings from "@/lib/models/GuildSettings"
 import UserCharacters from "@/lib/models/UserCharacters"
+import NsuSession from "@/lib/models/NsuSession"
 import nacl from "tweetnacl"
 import { updateDiscordMessage, sendRaidAnnouncement, updateTrainDiscordMessage, updateTrainRaidDiscordMessage, sendTrainRaidAnnouncement } from "@/lib/discord"
 import { sendRaidDM, buildTrainRaidLaunchEmbed } from "@/lib/discordDM"
@@ -920,6 +921,153 @@ export async function POST(request) {
         }
       }
 
+      // ── N수 레이드 참가 버튼 ──────────────────────────────────────────────
+      const joinNsuMatch = customId.match(/^join_nsu_(.+)$/)
+      if (joinNsuMatch) {
+        const raidId = joinNsuMatch[1]
+        const raid = await Raid.findById(raidId)
+        if (!raid || raid.totalRounds < 2) {
+          content = "❌ N수 레이드를 찾을 수 없습니다."
+        } else if (raid.status !== "모집중") {
+          content = "❌ 모집이 마감된 레이드입니다."
+        } else {
+          const alreadyIn = raid.rounds.some(r => r.participants.some(p => p.userId === userId))
+          if (alreadyIn) {
+            content = "❌ 이미 참가 신청한 레이드입니다."
+          } else {
+            const userChars = await UserCharacters.findOne({ discordId: userId })
+            if (!userChars || ((!userChars.accounts || userChars.accounts.length === 0) && userChars.characters.length === 0)) {
+              return Response.json({
+                type: 9,
+                data: {
+                  custom_id: `char_verify_nsu_${raidId}`,
+                  title: "캐릭터 연동",
+                  components: [{ type: 1, components: [{ type: 4, custom_id: "character_name", label: "대표 캐릭터명을 입력하세요", placeholder: "캐릭터명 입력", style: 1, required: true }] }],
+                },
+              })
+            }
+
+            const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
+            let allChars = []
+            if (userChars.accounts && userChars.accounts.length > 0) {
+              userChars.accounts.forEach(acc => acc.characters.forEach(c => allChars.push({ ...c, accountIndex: acc.accountIndex })))
+            } else {
+              allChars = (userChars.characters || []).map(c => ({ ...c, accountIndex: 1 }))
+            }
+            const eligible = allChars.filter(c => !minLevel || c.level >= minLevel)
+
+            if (eligible.length === 0) {
+              return Response.json({ type: 4, data: { content: `❌ 이 레이드에 참가 가능한 캐릭터가 없습니다.\n(최소 레벨: ${minLevel}+)`, flags: 64 } })
+            }
+
+            const options = eligible.sort((a, b) => b.level - a.level).slice(0, 25).map(c => ({
+              label: c.name,
+              description: `${c.class} · Lv.${c.level} · [계정${c.accountIndex}]`,
+              value: `${c.name}||${c.class}||${c.level}||${c.combatPower ?? ""}`,
+            }))
+
+            await NsuSession.findOneAndUpdate(
+              { userId, raidId },
+              { $set: { selections: new Map(), createdAt: new Date() } },
+              { upsert: true, new: true }
+            )
+
+            const selectRows = Array.from({ length: raid.totalRounds }, (_, i) => ({
+              type: 1,
+              components: [{
+                type: 3,
+                custom_id: `select_nsu_char_${i + 1}_${raidId}`,
+                placeholder: `${i + 1}수 캐릭터 선택`,
+                options,
+              }],
+            }))
+
+            return Response.json({
+              type: 4,
+              data: {
+                flags: 64,
+                content: `**${raid.raidAlias} ${raid.difficulty} ${raid.totalRounds}수** 각 수별 참가할 캐릭터를 선택하세요:`,
+                components: selectRows,
+              },
+            })
+          }
+        }
+      }
+
+      // ── N수 캐릭터 선택 → 세션 저장 / 전체 선택 완료 시 참가 처리 ─────────
+      const selectNsuCharMatch = customId.match(/^select_nsu_char_(\d+)_(.+)$/)
+      if (selectNsuCharMatch) {
+        const order = parseInt(selectNsuCharMatch[1])
+        const raidId = selectNsuCharMatch[2]
+        const selectedValue = interaction.data.values?.[0]
+        if (!selectedValue) return Response.json({ type: 4, data: { content: "❌ 캐릭터를 선택해주세요.", flags: 64 } })
+
+        const raid = await Raid.findById(raidId)
+        if (!raid || raid.totalRounds < 2) return Response.json({ type: 4, data: { content: "❌ 레이드를 찾을 수 없습니다.", flags: 64 } })
+        if (raid.status !== "모집중") return Response.json({ type: 4, data: { content: "❌ 모집이 마감된 레이드입니다.", flags: 64 } })
+
+        const nsuSession = await NsuSession.findOneAndUpdate(
+          { userId, raidId },
+          { $set: { [`selections.${order}`]: selectedValue } },
+          { new: true }
+        )
+        if (!nsuSession) return Response.json({ type: 4, data: { content: "❌ 세션이 만료되었습니다. 다시 참가 버튼을 눌러주세요.", flags: 64 } })
+
+        const selectedCount = nsuSession.selections ? nsuSession.selections.size : 0
+        if (selectedCount < raid.totalRounds) {
+          const remaining = raid.totalRounds - selectedCount
+          return Response.json({ type: 4, data: { content: `✅ ${order}수 선택 완료! 나머지 ${remaining}수도 선택해주세요.`, flags: 64 } })
+        }
+
+        // 전체 선택 완료 → 참가 처리
+        const supporterSlots = raid.maxPlayers / 4
+        const dealerSlots = raid.maxPlayers - supporterSlots
+        const userImage = userAvatar ? `https://cdn.discordapp.com/avatars/${userId}/${userAvatar}.png` : null
+
+        const alreadyIn = raid.rounds.some(r => r.participants.some(p => p.userId === userId))
+        if (alreadyIn) {
+          await NsuSession.deleteOne({ userId, raidId })
+          return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
+        }
+
+        for (const [orderKey, val] of nsuSession.selections.entries()) {
+          const roundOrder = parseInt(orderKey)
+          const [characterName, characterClass, characterLevelStr, combatPowerStr] = val.split("||")
+          const characterLevel = parseFloat(characterLevelStr)
+          const characterCombatPower = combatPowerStr ? parseInt(combatPowerStr) : null
+          const role = SUPPORTER_CLASSES.includes(characterClass) ? "support" : "dealer"
+
+          const round = raid.rounds.find(r => r.order === roundOrder)
+          if (!round) continue
+
+          const roundDealers = round.participants.filter(p => p.role === "dealer")
+          const roundSupporters = round.participants.filter(p => p.role === "support")
+          if (role === "dealer" && roundDealers.length >= dealerSlots) {
+            await NsuSession.deleteOne({ userId, raidId })
+            return Response.json({ type: 4, data: { content: `❌ ${roundOrder}수 딜러 자리가 꽉 찼습니다.`, flags: 64 } })
+          }
+          if (role === "support" && roundSupporters.length >= supporterSlots) {
+            await NsuSession.deleteOne({ userId, raidId })
+            return Response.json({ type: 4, data: { content: `❌ ${roundOrder}수 서포터 자리가 꽉 찼습니다.`, flags: 64 } })
+          }
+
+          round.participants.push({ userId, userName, userImage, role, characterName, characterClass, characterLevel, characterCombatPower })
+        }
+
+        const allFull = raid.rounds.every(r => {
+          const d = r.participants.filter(p => p.role === "dealer").length
+          const s = r.participants.filter(p => p.role === "support").length
+          return d >= dealerSlots && s >= supporterSlots
+        })
+        if (allFull) raid.status = "모집완료"
+
+        await raid.save()
+        await NsuSession.deleteOne({ userId, raidId })
+        updateDiscordMessage(raid).catch(e => console.error("N수 Discord 업데이트 실패:", e))
+
+        return Response.json({ type: 4, data: { content: `✅ **${userName}**님이 ${raid.totalRounds}수 레이드에 참가했습니다!`, flags: 64 } })
+      }
+
       // ── 캐릭터 인증 버튼 (char_auth_register / char_auth_update / char_auth_remove) ──
       if (customId === "char_auth_register") {
         return Response.json({
@@ -947,10 +1095,31 @@ export async function POST(request) {
         if (!existing?.representCharacter) {
           return Response.json({ type: 4, data: { content: "❌ 등록된 캐릭터가 없습니다. 먼저 인증해주세요.", flags: 64 } })
         }
+        if (existing.accounts && existing.accounts.length >= 2) {
+          return Response.json({
+            type: 4,
+            data: {
+              flags: 64,
+              content: "변경할 계정을 선택하세요:",
+              components: [{
+                type: 1,
+                components: [{
+                  type: 3,
+                  custom_id: "char_auth_select_account",
+                  placeholder: "계정 선택",
+                  options: existing.accounts.map(a => ({
+                    label: `계정 ${a.accountIndex} (${a.representCharacter})`,
+                    value: String(a.accountIndex),
+                  })),
+                }],
+              }],
+            },
+          })
+        }
         return Response.json({
           type: 9,
           data: {
-            custom_id: "char_auth_modal_update",
+            custom_id: "char_auth_modal_update_1",
             title: "캐릭터 변경",
             components: [{
               type: 1,
@@ -959,6 +1128,32 @@ export async function POST(request) {
                 custom_id: "character_name",
                 label: "변경할 대표 캐릭터명을 입력하세요",
                 placeholder: `현재: ${existing.representCharacter}`,
+                style: 1,
+                required: true,
+              }],
+            }],
+          },
+        })
+      }
+
+      // ── 계정 선택 → 캐릭터 변경 모달 ─────────────────────────────────────
+      if (customId === "char_auth_select_account") {
+        const accountIndex = interaction.data.values[0]
+        const existing = await UserCharacters.findOne({ discordId: userId })
+        const account = existing?.accounts?.find(a => String(a.accountIndex) === accountIndex)
+        const placeholder = account ? `현재: ${account.representCharacter}` : "캐릭터명 입력"
+        return Response.json({
+          type: 9,
+          data: {
+            custom_id: `char_auth_modal_update_${accountIndex}`,
+            title: `계정 ${accountIndex} 캐릭터 변경`,
+            components: [{
+              type: 1,
+              components: [{
+                type: 4,
+                custom_id: "character_name",
+                label: "변경할 대표 캐릭터명을 입력하세요",
+                placeholder,
                 style: 1,
                 required: true,
               }],
@@ -1326,8 +1521,10 @@ export async function POST(request) {
         })
       }
 
-      // ── 캐릭터 인증 모달 (char_auth_modal_register / char_auth_modal_update) ──
-      if (customId === "char_auth_modal_register" || customId === "char_auth_modal_update") {
+      // ── 캐릭터 인증 모달 (char_auth_modal_register / char_auth_modal_update_N) ──
+      const charAuthModalUpdateMatch = customId.match(/^char_auth_modal_update_(\d+)$/)
+      if (customId === "char_auth_modal_register" || charAuthModalUpdateMatch) {
+        const accountIndex = charAuthModalUpdateMatch ? parseInt(charAuthModalUpdateMatch[1]) : null
         const characterName = interaction.data.components[0].components[0].value.trim()
 
         let characters
@@ -1340,11 +1537,38 @@ export async function POST(request) {
           return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.", flags: 64 } })
         }
 
-        await UserCharacters.findOneAndUpdate(
-          { discordId: userId },
-          { discordId: userId, representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() },
-          { upsert: true, new: true }
-        )
+        if (accountIndex) {
+          const accountEntry = {
+            accountIndex,
+            representCharacter: characterName,
+            characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })),
+            lastSyncAt: new Date(),
+          }
+          const topLevelUpdate = accountIndex === 1
+            ? { representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() }
+            : {}
+
+          const updated = await UserCharacters.findOneAndUpdate(
+            { discordId: userId, "accounts.accountIndex": accountIndex },
+            { $set: { "accounts.$[elem]": accountEntry, ...topLevelUpdate } },
+            { arrayFilters: [{ "elem.accountIndex": accountIndex }], new: true }
+          )
+          if (!updated) {
+            const pushUpdate = { $push: { accounts: accountEntry } }
+            if (accountIndex === 1) pushUpdate.$set = topLevelUpdate
+            await UserCharacters.findOneAndUpdate(
+              { discordId: userId },
+              pushUpdate,
+              { upsert: true }
+            )
+          }
+        } else {
+          await UserCharacters.findOneAndUpdate(
+            { discordId: userId },
+            { discordId: userId, representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() },
+            { upsert: true, new: true }
+          )
+        }
 
         const maxChar = characters.reduce((a, b) => b.level > a.level ? b : a, characters[0])
         const actionLabel = customId === "char_auth_modal_register" ? "인증" : "변경"
@@ -1361,6 +1585,69 @@ export async function POST(request) {
               "",
               "레이드 참가 시 캐릭터 정보와 함께 참가할 수 있어요!",
             ].join("\n"),
+          },
+        })
+      }
+
+      // ── N수 레이드 캐릭터 연동 모달 → 참가 선택 메뉴 표시 ────────────────
+      const charVerifyNsuMatch = customId.match(/^char_verify_nsu_(.+)$/)
+      if (charVerifyNsuMatch) {
+        const raidId = charVerifyNsuMatch[1]
+        const characterName = interaction.data.components[0].components[0].value.trim()
+
+        let characters
+        try {
+          characters = await fetchLostarkCharacters(characterName)
+        } catch (e) {
+          return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다.", flags: 64 } })
+        }
+        if (!characters) return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다.", flags: 64 } })
+
+        await UserCharacters.findOneAndUpdate(
+          { discordId: userId },
+          { discordId: userId, representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() },
+          { upsert: true, new: true }
+        )
+
+        const raid = await Raid.findById(raidId)
+        if (!raid || raid.totalRounds < 2 || raid.status !== "모집중") {
+          return Response.json({ type: 4, data: { content: "✅ 캐릭터 연동 완료!\n\n❌ 모집이 마감된 레이드입니다.", flags: 64 } })
+        }
+
+        const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
+        const eligible = characters.filter(c => !minLevel || c.level >= minLevel)
+        if (eligible.length === 0) {
+          return Response.json({ type: 4, data: { content: `✅ 캐릭터 연동 완료!\n\n❌ 이 레이드에 참가 가능한 캐릭터가 없습니다.\n(최소 레벨: ${minLevel}+)`, flags: 64 } })
+        }
+
+        const options = eligible.sort((a, b) => b.level - a.level).slice(0, 25).map(c => ({
+          label: c.name,
+          description: `${c.class} · Lv.${c.level} · [계정1]`,
+          value: `${c.name}||${c.class}||${c.level}||`,
+        }))
+
+        await NsuSession.findOneAndUpdate(
+          { userId, raidId },
+          { $set: { selections: new Map(), createdAt: new Date() } },
+          { upsert: true, new: true }
+        )
+
+        const selectRows = Array.from({ length: raid.totalRounds }, (_, i) => ({
+          type: 1,
+          components: [{
+            type: 3,
+            custom_id: `select_nsu_char_${i + 1}_${raidId}`,
+            placeholder: `${i + 1}수 캐릭터 선택`,
+            options,
+          }],
+        }))
+
+        return Response.json({
+          type: 4,
+          data: {
+            flags: 64,
+            content: `✅ 캐릭터 연동 완료! **${raid.raidAlias} ${raid.difficulty} ${raid.totalRounds}수** 각 수별 참가할 캐릭터를 선택하세요:`,
+            components: selectRows,
           },
         })
       }
