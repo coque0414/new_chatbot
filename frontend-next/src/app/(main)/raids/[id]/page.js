@@ -656,11 +656,21 @@ export default function RaidDetailPage() {
                         className={`w-full text-sm px-3 py-2 rounded-xl border mb-2
                           ${d ? "bg-white/5 border-white/10 text-white" : "bg-white border-purple-200 text-gray-700"}`}>
                         <option value="">캐릭터를 선택하세요</option>
-                        {nsuChars.map((c, idx) => (
-                          <option key={idx} value={`${c.name}||${c.class}||${c.level}||${c.combatPower ?? ""}`}>
-                            [계정{c.accountIndex}] {c.name} · {c.class} · Lv.{c.level}
-                          </option>
-                        ))}
+                        {(() => {
+                          const otherSelected = new Set(
+                            Object.entries(nsuSelections)
+                              .filter(([k]) => parseInt(k) !== order)
+                              .map(([, v]) => v.characterName)
+                              .filter(Boolean)
+                          )
+                          return nsuChars
+                            .filter(c => !otherSelected.has(c.name))
+                            .map((c, idx) => (
+                              <option key={idx} value={`${c.name}||${c.class}||${c.level}||${c.combatPower ?? ""}`}>
+                                [계정{c.accountIndex}] {c.name} · {c.class} · Lv.{c.level}
+                              </option>
+                            ))
+                        })()}
                       </select>
                       <div className="flex gap-2">
                         <button

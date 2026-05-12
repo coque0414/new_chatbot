@@ -1048,6 +1048,16 @@ export async function POST(request) {
         if (!raid || raid.totalRounds < 2) return Response.json({ type: 4, data: { content: "❌ 레이드를 찾을 수 없습니다.", flags: 64 } })
         if (raid.status !== "모집중") return Response.json({ type: 4, data: { content: "❌ 모집이 마감된 레이드입니다.", flags: 64 } })
 
+        const existingSession = await NsuSession.findOne({ userId, raidId })
+        if (!existingSession) return Response.json({ type: 4, data: { content: "❌ 세션이 만료되었습니다. 다시 참가 버튼을 눌러주세요.", flags: 64 } })
+
+        const newCharName = selectedValue.split("||")[0]
+        for (const [key, val] of existingSession.selections.entries()) {
+          if (parseInt(key) !== order && val.split("||")[0] === newCharName) {
+            return Response.json({ type: 4, data: { content: "❌ 같은 캐릭터를 여러 수에 배치할 수 없습니다.", flags: 64 } })
+          }
+        }
+
         const nsuSession = await NsuSession.findOneAndUpdate(
           { userId, raidId },
           { $set: { [`selections.${order}`]: selectedValue } },
