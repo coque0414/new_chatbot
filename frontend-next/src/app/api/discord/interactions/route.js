@@ -1380,7 +1380,7 @@ export async function POST(request) {
         try {
           const msgId = await sendRaidAnnouncement(
             settings.announcementChannelId,
-            { raidName: raidInfo.raidName, raidAlias: raidInfo.raidAlias, difficulty, maxPlayers: raidInfo.maxPlayers, date: isMobaChul ? "" : dateInput, time: isMobaChul ? "" : timeInput, isMobaChul },
+            { raidName: raidInfo.raidName, raidAlias: raidInfo.raidAlias, difficulty, maxPlayers: raidInfo.maxPlayers, date: isMobaChul ? "" : dateInput, time: isMobaChul ? "" : timeInput, isMobaChul, difficulty_level: difficultyLevelInput },
             hostName,
             raid._id.toString(),
             []
