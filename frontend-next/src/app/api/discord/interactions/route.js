@@ -984,11 +984,17 @@ export async function POST(request) {
             }
 
             const minLevel = (getMinLevel(raid.raidAlias, raid.difficulty) || getMinLevel(raid.raidName, raid.difficulty) || 0)
+            const userCharsObj = userChars.toObject()
             let allChars = []
-            if (userChars.accounts && userChars.accounts.length > 0) {
-              userChars.accounts.forEach(acc => acc.characters.forEach(c => allChars.push({ ...c, accountIndex: acc.accountIndex })))
-            } else {
-              allChars = (userChars.characters || []).map(c => ({ ...c, accountIndex: 1 }))
+            if (userCharsObj.accounts && userCharsObj.accounts.length > 0) {
+              userCharsObj.accounts.forEach(acc =>
+                (acc.characters || []).forEach(c =>
+                  allChars.push({ ...c, accountIndex: acc.accountIndex })
+                )
+              )
+            }
+            if (allChars.length === 0) {
+              allChars = (userCharsObj.characters || []).map(c => ({ ...c, accountIndex: 1 }))
             }
             const eligible = allChars.filter(c => !minLevel || c.level >= minLevel)
 
