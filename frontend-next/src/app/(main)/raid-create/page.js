@@ -272,6 +272,7 @@ export default function RaidCreatePage() {
 
   const isFormValid = selectedRaid && selectedDifficulty
     && selectedGuild && announcementChannelId
+    && difficultyLevel
     && (isMobaChul || (date && time))
     && (isNsuEnabled && totalRounds >= 2 ? isNsuHostValid : hostCharacterValid)
 
@@ -644,14 +645,14 @@ export default function RaidCreatePage() {
               {/* 숙련도 선택 */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${d ? "text-gray-300" : "text-gray-700"}`}>
-                  숙련도 <span className={`text-xs font-normal ${d ? "text-gray-500" : "text-gray-400"}`}>(선택)</span>
+                  숙련도 *
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"].map(level => (
                     <button
                       key={level}
                       type="button"
-                      onClick={() => setDifficultyLevel(prev => prev === level ? null : level)}
+                      onClick={() => setDifficultyLevel(level)}
                       className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors
                         ${difficultyLevel === level
                           ? d ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-purple-600 border-purple-600 text-white"
