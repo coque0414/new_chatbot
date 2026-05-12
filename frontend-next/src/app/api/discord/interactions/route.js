@@ -385,6 +385,7 @@ export async function POST(request) {
                   { label: "1710 - 3종/4종",        value: "1710" },
                   { label: "1720 - 3종/4종",        value: "1720" },
                   { label: "1730 - 3종/4종",        value: "1730" },
+                  { label: "1750 - 3종/4종",        value: "1750" },
                 ],
               }],
             }],

@@ -82,7 +82,7 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
     : "없음"
 
   const embed = {
-    title: `${raid.raidAlias} ${raid.difficulty} 모집`,
+    title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` [${raid.difficulty_level}]` : ""} 모집`,
     description: `${raid.raidName} 파티원을 모집합니다`,
     color: 0x9B59B6,
     fields: [
@@ -720,7 +720,7 @@ export async function updateDiscordMessage(raid) {
   }
 
   const embedData = {
-    title: `${raid.raidAlias} ${raid.difficulty} 모집`,
+    title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` [${raid.difficulty_level}]` : ""} 모집`,
     description: `${raid.raidName} 파티원을 모집합니다`,
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [

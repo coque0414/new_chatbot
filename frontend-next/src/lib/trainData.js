@@ -105,6 +105,33 @@ export const TRAIN_PRESETS = {
       }
     ]
   },
+  1750: {
+    label: "1750 3종/4종",
+    maxPlayersOptions: [4, 8],
+    options: [
+      {
+        id: "1750_3",
+        label: "1750 3종",
+        trainLabel: "1750 3종 기차 (세르카 나이트메어 + 종막 하드 + 지평 3단계)",
+        raids: [
+          { alias: "세르카", tag: "그림자", name: "세르카", difficulty: "나이트메어", maxPlayers: 4 },
+          { alias: "카제로스", tag: "종막", name: "최후의 날", difficulty: "하드", maxPlayers: 8 },
+          { alias: "지평의 성당", tag: "성당", name: "아르세노스", difficulty: "3단계", maxPlayers: 4 },
+        ]
+      },
+      {
+        id: "1750_4",
+        label: "1750 4종",
+        trainLabel: "1750 4종 기차 (세르카 나이트메어 + 종막 하드 + 지평 3단계 + 4막 하드)",
+        raids: [
+          { alias: "세르카", tag: "그림자", name: "세르카", difficulty: "나이트메어", maxPlayers: 4 },
+          { alias: "카제로스", tag: "종막", name: "최후의 날", difficulty: "하드", maxPlayers: 8 },
+          { alias: "지평의 성당", tag: "성당", name: "아르세노스", difficulty: "3단계", maxPlayers: 4 },
+          { alias: "아르모체", tag: "4막", name: "파멸의 성채", difficulty: "하드", maxPlayers: 8 },
+        ]
+      }
+    ]
+  },
   1730: {
     label: "1730 3종/4종",
     maxPlayersOptions: [4, 8],

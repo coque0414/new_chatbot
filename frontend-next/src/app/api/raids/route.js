@@ -47,6 +47,7 @@ export async function POST(request) {
       hostCharacter,      // { name, class, level, combatPower } | null
       hostNsuCharacters,  // { "1": { name, class, level, combatPower }, ... } | null
       hostNsuRoles,       // { "1": "dealer"|"support", ... } | null
+      difficultyLevel,    // "헤딩" | "트라이" | "클경" | "반숙" | "숙련" | "숙제" | null
       trains,             // N종 기차 모드: 레이드 배열
       notifyMinutesBefore: rawNotify,
       totalRounds: rawTotalRounds,
@@ -199,6 +200,7 @@ export async function POST(request) {
       date,
       time,
       isMobaChul: isMobaChul || false,
+      difficulty_level: difficultyLevel || null,
       discordChannelId,
       guildId,
       hostId: hostUserId,

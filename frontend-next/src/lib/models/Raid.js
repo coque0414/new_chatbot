@@ -43,6 +43,9 @@ const RaidSchema = new mongoose.Schema({
     default: "모집중"
   },
 
+  // 숙련도
+  difficulty_level: { type: String, default: null },  // "헤딩" | "트라이" | "클경" | "반숙" | "숙련" | "숙제" | null
+
   // 기차 레이드
   isTrain: { type: Boolean, default: false },      // 기차 레이드 여부
   trainKey: { type: String, default: null },       // 프리셋 키 (예: "1680_3")

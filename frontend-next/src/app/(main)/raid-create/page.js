@@ -129,6 +129,7 @@ export default function RaidCreatePage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState("")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("")
+  const [difficultyLevel, setDifficultyLevel] = useState(null)
   const [isMobaChul, setIsMobaChul] = useState(false)
   const [raidDropdownOpen, setRaidDropdownOpen] = useState(false)
   const [hostRole, setHostRole] = useState("dealer")
@@ -640,6 +641,28 @@ export default function RaidCreatePage() {
                 </div>
               </div>
 
+              {/* 숙련도 선택 */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${d ? "text-gray-300" : "text-gray-700"}`}>
+                  숙련도 <span className={`text-xs font-normal ${d ? "text-gray-500" : "text-gray-400"}`}>(선택)</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"].map(level => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setDifficultyLevel(prev => prev === level ? null : level)}
+                      className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors
+                        ${difficultyLevel === level
+                          ? d ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-purple-600 border-purple-600 text-white"
+                          : d ? "bg-white/5 border-white/10 text-gray-400 hover:border-white/20" : "bg-white border-purple-100 text-gray-500 hover:border-purple-300"
+                        }`}>
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* 모바출 토글 */}
               <div className={`flex items-center justify-between px-4 py-3 rounded-xl border
                 ${d ? "bg-white/5 border-white/10" : "bg-purple-50 border-purple-100"}`}>
@@ -905,6 +928,7 @@ export default function RaidCreatePage() {
                           date,
                           time,
                           isMobaChul,
+                          difficultyLevel: difficultyLevel || null,
                           discordChannelId: announcementChannelId,
                           guildId: selectedGuild?.id,
                           hostRole: (!isNsuEnabled || totalRounds < 2) ? hostRole : undefined,
