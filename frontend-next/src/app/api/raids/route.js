@@ -104,6 +104,7 @@ export async function POST(request) {
         date: date || "",
         time: time || "",
         isMobaChul: isMobaChul || false,
+        difficulty_level: difficultyLevel || null,
         discordChannelId,
         guildId,
         hostId: hostUserId,
