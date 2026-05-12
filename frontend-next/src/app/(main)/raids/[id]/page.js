@@ -324,7 +324,7 @@ export default function RaidDetailPage() {
                     </Badge>
                   </div>
                   <h2 className="text-xl font-bold" style={{ fontFamily: "var(--font-cinzel), serif" }}>
-                    {raid.isTrain ? raid.trainLabel : raid.raidAlias}
+                    {raid.isTrain ? `${raid.trainLabel}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""}` : raid.raidAlias}
                   </h2>
                   {!raid.isTrain && (
                     <p className={`text-sm mt-0.5 ${d ? "text-gray-400" : "text-gray-500"}`}>
