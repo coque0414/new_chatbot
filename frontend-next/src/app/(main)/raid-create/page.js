@@ -156,6 +156,7 @@ export default function RaidCreatePage() {
   const [trainSelectedCharacter, setTrainSelectedCharacter] = useState(null)
   const [loadingCharacters, setLoadingCharacters] = useState(false)
   const [hostNsuCharacters, setHostNsuCharacters] = useState({ 1: null, 2: null, 3: null, 4: null })
+  const [hostNsuRoles, setHostNsuRoles] = useState({ 1: "dealer", 2: "dealer", 3: "dealer", 4: "dealer" })
 
   // 공통 상태
   const [guilds, setGuilds] = useState([])
@@ -176,6 +177,7 @@ export default function RaidCreatePage() {
     setIsNsuEnabled(false)
     setTotalRounds(1)
     setHostNsuCharacters({ 1: null, 2: null, 3: null, 4: null })
+    setHostNsuRoles({ 1: "dealer", 2: "dealer", 3: "dealer", 4: "dealer" })
     if (tab === "train") {
       setSelectedRaid(null)
       setSelectedDifficulty("")
@@ -264,7 +266,6 @@ export default function RaidCreatePage() {
 
   const isNsuHostValid = (() => {
     if (!isNsuEnabled || totalRounds < 2) return true
-    if (hostRole === "none") return true
     return Array.from({ length: totalRounds }, (_, i) => i + 1).every(order => hostNsuCharacters[order] !== null)
   })()
 
@@ -736,7 +737,7 @@ export default function RaidCreatePage() {
                     <p className={`text-xs ${d ? "text-gray-500" : "text-gray-400"}`}>같은 레이드를 여러 번 돌아요</p>
                   </div>
                   <button
-                    onClick={() => { const next = !isNsuEnabled; setIsNsuEnabled(next); if (!next) setTotalRounds(1); setHostNsuCharacters({ 1: null, 2: null, 3: null, 4: null }) }}
+                    onClick={() => { const next = !isNsuEnabled; setIsNsuEnabled(next); if (!next) setTotalRounds(1); setHostNsuCharacters({ 1: null, 2: null, 3: null, 4: null }); setHostNsuRoles({ 1: "dealer", 2: "dealer", 3: "dealer", 4: "dealer" }) }}
                     style={{ flexShrink: 0 }}
                     className={`relative inline-flex w-11 h-6 rounded-full transition-colors
                       ${isNsuEnabled ? d ? "bg-amber-500" : "bg-purple-600" : d ? "bg-white/20" : "bg-gray-200"}`}>
@@ -749,7 +750,7 @@ export default function RaidCreatePage() {
                     {[2, 3, 4].map(n => (
                       <button
                         key={n}
-                        onClick={() => { setTotalRounds(n); setHostNsuCharacters({ 1: null, 2: null, 3: null, 4: null }) }}
+                        onClick={() => { setTotalRounds(n); setHostNsuCharacters({ 1: null, 2: null, 3: null, 4: null }); setHostNsuRoles({ 1: "dealer", 2: "dealer", 3: "dealer", 4: "dealer" }) }}
                         className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
                           ${totalRounds === n
                             ? d ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-purple-600 border-purple-600 text-white"
@@ -765,55 +766,64 @@ export default function RaidCreatePage() {
               {/* 주최자 참가 여부 */}
               {isNsuEnabled && totalRounds >= 2 ? (
                 <div className={`px-4 py-4 rounded-xl border ${d ? "bg-white/5 border-white/10" : "bg-purple-50 border-purple-100"}`}>
-                  <p className={`text-sm font-medium mb-3 ${d ? "text-white" : "text-gray-800"}`}>👑 주최자 참가 여부</p>
-                  <div className="flex gap-3">
-                    {[{ value: "dealer", label: "⚔️ 딜러" }, { value: "support", label: "🛡️ 서포터" }, { value: "none", label: "🚫 미참여" }].map(opt => (
-                      <label key={opt.value}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm cursor-pointer transition-colors
-                          ${hostRole === opt.value
-                            ? d ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-purple-600 border-purple-600 text-white"
-                            : d ? "bg-white/5 border-white/10 text-gray-400 hover:border-white/20" : "bg-white border-purple-100 text-gray-500 hover:border-purple-300"
-                          }`}>
-                        <input type="radio" name="hostRole" value={opt.value} checked={hostRole === opt.value}
-                          onChange={() => { setHostRole(opt.value); setHostNsuCharacters({ 1: null, 2: null, 3: null, 4: null }) }}
-                          className="hidden" />
-                        {opt.label}
-                      </label>
-                    ))}
-                  </div>
-                  {hostRole !== "none" && (
-                    <div className="mt-3 space-y-3">
-                      {loadingCharacters ? (
-                        <p className={`text-xs ${d ? "text-gray-500" : "text-gray-400"}`}>캐릭터 불러오는 중...</p>
-                      ) : myCharacters.length === 0 ? (
-                        <div className="space-y-2">
-                          <p className={`text-xs ${d ? "text-red-400" : "text-red-500"}`}>⚠️ 레이드에 참가하려면 캐릭터 연동이 필요합니다.</p>
-                          <a href="/characters">
-                            <Button size="sm" className={`text-xs h-7 ${d ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30" : "bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-200"}`}>캐릭터 연동하기</Button>
-                          </a>
-                        </div>
-                      ) : (
-                        Array.from({ length: totalRounds }, (_, i) => i + 1).map(order => (
-                          <div key={order}>
-                            <label className={`block text-xs font-medium mb-1 ${d ? "text-gray-400" : "text-gray-600"}`}>{order}수 캐릭터 *</label>
+                  <p className={`text-sm font-medium mb-3 ${d ? "text-white" : "text-gray-800"}`}>👑 주최자 참가 캐릭터</p>
+                  {loadingCharacters ? (
+                    <p className={`text-xs ${d ? "text-gray-500" : "text-gray-400"}`}>캐릭터 불러오는 중...</p>
+                  ) : myCharacters.length === 0 ? (
+                    <div className="space-y-2">
+                      <p className={`text-xs ${d ? "text-red-400" : "text-red-500"}`}>⚠️ 레이드에 참가하려면 캐릭터 연동이 필요합니다.</p>
+                      <a href="/characters">
+                        <Button size="sm" className={`text-xs h-7 ${d ? "bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30" : "bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-200"}`}>캐릭터 연동하기</Button>
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Array.from({ length: totalRounds }, (_, i) => i + 1).map(order => (
+                        <div key={order} className="space-y-2">
+                          <label className={`block text-xs font-medium ${d ? "text-gray-400" : "text-gray-600"}`}>{order}수 캐릭터 *</label>
+                          <div className="flex gap-2">
                             <select
                               value={hostNsuCharacters[order]?.name || ""}
                               onChange={e => {
                                 const char = filteredSingleChars.find(c => c.name === e.target.value)
                                 setHostNsuCharacters(prev => ({ ...prev, [order]: char || null }))
+                                if (char) {
+                                  setHostNsuRoles(prev => ({ ...prev, [order]: SUPPORTER_CLASSES.includes(char.class) ? "support" : "dealer" }))
+                                }
                               }}
-                              className={inputClass}>
+                              className={`flex-1 px-3 py-2 rounded-xl border text-sm outline-none transition-colors
+                                ${d ? "bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-amber-500/50" : "bg-white border-purple-100 text-gray-800 placeholder-gray-400 focus:border-purple-300"}`}>
                               <option value="">캐릭터를 선택하세요 *</option>
                               {filteredSingleChars.map(c => (
                                 <option key={c.name} value={c.name}>{c.name} ({c.class}) Lv.{c.level}</option>
                               ))}
                             </select>
-                            {!hostNsuCharacters[order] && (
-                              <p className={`text-xs mt-1 ${d ? "text-red-400" : "text-red-500"}`}>⚠️ {order}수 캐릭터를 선택해주세요</p>
-                            )}
+                            <div className="flex gap-1 shrink-0">
+                              <button
+                                onClick={() => setHostNsuRoles(prev => ({ ...prev, [order]: "dealer" }))}
+                                className={`px-2.5 py-2 rounded-lg text-xs font-medium transition-colors border
+                                  ${hostNsuRoles[order] === "dealer"
+                                    ? d ? "bg-red-500/20 text-red-400 border-red-500/30" : "bg-red-50 text-red-600 border-red-200"
+                                    : d ? "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10" : "bg-white text-gray-500 border-purple-100 hover:border-purple-300"
+                                  }`}>
+                                ⚔️
+                              </button>
+                              <button
+                                onClick={() => setHostNsuRoles(prev => ({ ...prev, [order]: "support" }))}
+                                className={`px-2.5 py-2 rounded-lg text-xs font-medium transition-colors border
+                                  ${hostNsuRoles[order] === "support"
+                                    ? d ? "bg-blue-500/20 text-blue-400 border-blue-500/30" : "bg-blue-50 text-blue-600 border-blue-200"
+                                    : d ? "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10" : "bg-white text-gray-500 border-purple-100 hover:border-purple-300"
+                                  }`}>
+                                🛡️
+                              </button>
+                            </div>
                           </div>
-                        ))
-                      )}
+                          {!hostNsuCharacters[order] && (
+                            <p className={`text-xs ${d ? "text-red-400" : "text-red-500"}`}>⚠️ {order}수 캐릭터를 선택해주세요</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -897,14 +907,14 @@ export default function RaidCreatePage() {
                           isMobaChul,
                           discordChannelId: announcementChannelId,
                           guildId: selectedGuild?.id,
-                          hostRole,
+                          hostRole: (!isNsuEnabled || totalRounds < 2) ? hostRole : undefined,
                           hostCharacter: (!isNsuEnabled || totalRounds < 2) && selectedCharacter ? {
                             name: selectedCharacter.name,
                             class: selectedCharacter.class,
                             level: selectedCharacter.level,
                             combatPower: selectedCharacter.combatPower || null,
                           } : null,
-                          hostNsuCharacters: isNsuEnabled && totalRounds >= 2 && hostRole !== "none"
+                          hostNsuCharacters: isNsuEnabled && totalRounds >= 2
                             ? Object.fromEntries(Array.from({ length: totalRounds }, (_, i) => [
                                 i + 1,
                                 hostNsuCharacters[i + 1] ? {
@@ -914,6 +924,9 @@ export default function RaidCreatePage() {
                                   combatPower: hostNsuCharacters[i + 1].combatPower || null,
                                 } : null,
                               ]))
+                            : null,
+                          hostNsuRoles: isNsuEnabled && totalRounds >= 2
+                            ? Object.fromEntries(Array.from({ length: totalRounds }, (_, i) => [i + 1, hostNsuRoles[i + 1] || "dealer"]))
                             : null,
                           notifyMinutesBefore: notifyMinutes,
                           totalRounds: isNsuEnabled ? totalRounds : 1,

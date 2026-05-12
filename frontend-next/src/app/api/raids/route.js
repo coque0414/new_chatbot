@@ -4,7 +4,6 @@ import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import { sendRaidAnnouncement, sendTrainAnnouncement } from "@/lib/discord"
 import { getLoaWeekStart } from "@/lib/loaWeek"
-import { SUPPORTER_CLASSES } from "@/lib/lostarkData"
 
 // ── IP 기반 Rate Limit (POST /api/raids: 1분에 10회) ──
 const raidCreateRateLimit = new Map()
@@ -47,6 +46,7 @@ export async function POST(request) {
       hostRole,           // "dealer" | "support" | "none"
       hostCharacter,      // { name, class, level, combatPower } | null
       hostNsuCharacters,  // { "1": { name, class, level, combatPower }, ... } | null
+      hostNsuRoles,       // { "1": "dealer"|"support", ... } | null
       trains,             // N종 기차 모드: 레이드 배열
       notifyMinutesBefore: rawNotify,
       totalRounds: rawTotalRounds,
@@ -168,21 +168,19 @@ export async function POST(request) {
       return Array.from({ length: totalRounds }, (_, i) => {
         const order = i + 1
         const roundParticipants = []
-        if (hostRole && hostRole !== "none" && hostNsuCharacters?.[order]) {
-          const hc = hostNsuCharacters[order]
-          if (hc?.name) {
-            const role = SUPPORTER_CLASSES.includes(hc.class) ? "support" : "dealer"
-            roundParticipants.push({
-              userId: hostUserId,
-              userName: session.user.name,
-              userImage: session.user.image,
-              role,
-              characterName: hc.name || null,
-              characterClass: hc.class || null,
-              characterLevel: hc.level || null,
-              characterCombatPower: hc.combatPower || null,
-            })
-          }
+        const hc = hostNsuCharacters?.[order]
+        if (hc?.name) {
+          const role = hostNsuRoles?.[order] || "dealer"
+          roundParticipants.push({
+            userId: hostUserId,
+            userName: session.user.name,
+            userImage: session.user.image,
+            role,
+            characterName: hc.name || null,
+            characterClass: hc.class || null,
+            characterLevel: hc.level || null,
+            characterCombatPower: hc.combatPower || null,
+          })
         }
         return { order, participants: roundParticipants }
       })

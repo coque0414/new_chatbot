@@ -96,6 +96,14 @@ export default function RaidDetailPage() {
     p => p.userId === session.user.discordId || p.userId === session.user.id
   )
 
+  const isAlreadyJoinedNsu = !!(raid?.totalRounds >= 2 &&
+    raid.rounds?.some(r =>
+      r.participants?.some(p =>
+        p.userId === (session?.user?.discordId || session?.user?.id)
+      )
+    )
+  )
+
   const supporterSlots = raid ? raid.maxPlayers / 4 : 0
   const dealerSlots = raid ? raid.maxPlayers - supporterSlots : 0
   const dealers = raid?.participants?.filter(p => p.role === "dealer") || []
@@ -588,12 +596,20 @@ export default function RaidDetailPage() {
                       {leaving ? "⏳" : "❌"} 참가 취소
                     </Button>
                   ) : raid.totalRounds >= 2 ? (
-                    <Button
-                      className={`w-full py-3 font-bold
-                        ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
-                      onClick={openNsuModal}>
-                      ⚔️ 레이드 참가
-                    </Button>
+                    isAlreadyJoinedNsu ? (
+                      <Button
+                        disabled
+                        className="w-full py-3 font-bold opacity-60 cursor-not-allowed bg-gray-500 text-white">
+                        ✅ 참가 완료
+                      </Button>
+                    ) : (
+                      <Button
+                        className={`w-full py-3 font-bold
+                          ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
+                        onClick={openNsuModal}>
+                        ⚔️ 레이드 참가
+                      </Button>
+                    )
                   ) : (
                     // 미참가자 안내
                     <p className={`text-center text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>

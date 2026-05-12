@@ -164,7 +164,7 @@ async function launchTrainRaid(trainRaid) {
 
 // ── TrainRaid 참가 가능 캐릭터 필터링 ─────────────────────────────────────────
 function filterEligibleCharactersForTrain(characters, role, trainRaid) {
-  const minLevels = (trainRaid.trainRaids || []).map(r => getMinLevel(r.raidAlias, r.difficulty)).filter(l => l > 0)
+  const minLevels = (trainRaid.trainRaids || []).map(r => (getMinLevel(r.raidAlias, r.difficulty) || getMinLevel(r.raidName, r.difficulty) || 0)).filter(l => l > 0)
   const maxMinLevel = minLevels.length > 0 ? Math.max(...minLevels) : 0
 
   let filtered = maxMinLevel > 0 ? characters.filter(c => c.level >= maxMinLevel) : [...characters]
@@ -174,7 +174,7 @@ function filterEligibleCharactersForTrain(characters, role, trainRaid) {
 
 // ── 참가 가능 캐릭터 필터링 ────────────────────────────────────────────────────
 function filterEligibleCharacters(characters, role, raid) {
-  const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
+  const minLevel = (getMinLevel(raid.raidAlias, raid.difficulty) || getMinLevel(raid.raidName, raid.difficulty) || 0)
   const dealers = raid.participants.filter(p => p.role === "dealer")
 
   // 최소 레벨 필터
@@ -792,6 +792,24 @@ export async function POST(request) {
           content = "❌ 레이드를 찾을 수 없습니다."
         } else if (isExpired(raid)) {
           return Response.json(EXPIRED_MSG)
+        } else if (raid.totalRounds >= 2) {
+          let found = false
+          for (const round of raid.rounds) {
+            const idx = round.participants.findIndex(p => p.userId === userId)
+            if (idx !== -1) {
+              round.participants.splice(idx, 1)
+              found = true
+            }
+          }
+          if (!found) {
+            content = "❌ 참가 신청하지 않은 레이드입니다."
+          } else {
+            if (raid.status === "모집완료") raid.status = "모집중"
+            raid.markModified('rounds')
+            await raid.save()
+            await updateMessage(raid)
+            content = `✅ **${userName}**님의 참가가 취소되었습니다.`
+          }
         } else {
           const participantIndex = raid.participants.findIndex(p => p.userId === userId)
           if (participantIndex === -1) {
@@ -965,7 +983,7 @@ export async function POST(request) {
               })
             }
 
-            const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
+            const minLevel = (getMinLevel(raid.raidAlias, raid.difficulty) || getMinLevel(raid.raidName, raid.difficulty) || 0)
             let allChars = []
             if (userChars.accounts && userChars.accounts.length > 0) {
               userChars.accounts.forEach(acc => acc.characters.forEach(c => allChars.push({ ...c, accountIndex: acc.accountIndex })))

@@ -43,6 +43,15 @@ export async function POST(request, { params }) {
         return Response.json({ error: "모든 수의 캐릭터를 선택해주세요" }, { status: 400 })
       }
 
+      const charNames = roundSelections.map(s => s.characterName)
+      const hasDuplicate = charNames.length !== new Set(charNames).size
+      if (hasDuplicate) {
+        return Response.json(
+          { error: "같은 캐릭터를 여러 수에 배치할 수 없습니다" },
+          { status: 400 }
+        )
+      }
+
       const supporterSlots = raid.maxPlayers / 4
       const dealerSlots = raid.maxPlayers - supporterSlots
 
