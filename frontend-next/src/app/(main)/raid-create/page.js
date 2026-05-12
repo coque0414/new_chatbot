@@ -282,6 +282,7 @@ export default function RaidCreatePage() {
   const isTrainFormValid =
     trainLevel !== null && trainOption !== null &&
     selectedGuild && announcementChannelId &&
+    difficultyLevel &&
     (trainIsMobaChul || (trainDate && trainTime)) &&
     trainHostCharacterValid
 
@@ -1096,6 +1097,28 @@ export default function RaidCreatePage() {
               {/* Step 4: 공통 설정 (레벨·구성 선택 후 표시) */}
               {trainLevel && trainOption && (
                 <>
+                  {/* 숙련도 선택 */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${d ? "text-gray-300" : "text-gray-700"}`}>
+                      숙련도 *
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"].map(level => (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => setDifficultyLevel(level)}
+                          className={`px-3 py-2 rounded-xl border text-sm font-medium transition-colors
+                            ${difficultyLevel === level
+                              ? d ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-purple-600 border-purple-600 text-white"
+                              : d ? "bg-white/5 border-white/10 text-gray-400 hover:border-white/20" : "bg-white border-purple-100 text-gray-500 hover:border-purple-300"
+                            }`}>
+                          {level}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* 모바출 */}
                   {renderMobaChul(trainIsMobaChul, setTrainIsMobaChul, () => { setTrainDate(""); setTrainTime("") })}
 
@@ -1180,6 +1203,7 @@ export default function RaidCreatePage() {
                           isMobaChul: trainIsMobaChul,
                           date: trainDate,
                           time: trainTime,
+                          difficultyLevel: difficultyLevel || null,
                           discordChannelId: announcementChannelId,
                           guildId: selectedGuild?.id,
                           hostRole: trainHostRole,

@@ -122,7 +122,7 @@ export default function BoardPage() {
           ${d ? "bg-white/[0.03] border-white/10 hover:border-white/20" : "bg-white border-purple-100 hover:border-purple-300 hover:shadow-sm"}`}>
           <div className="flex items-start justify-between mb-2">
             <p className={`text-sm font-bold ${d ? "text-white" : "text-gray-800"}`}>
-              {isTrain ? raid.trainLabel : `${raid.raidAlias} ${raid.difficulty}`}
+              {isTrain ? raid.trainLabel : `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""}`}
             </p>
             <div className="flex items-center gap-1">
               {expired && (

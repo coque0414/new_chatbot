@@ -20,7 +20,7 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
     }))
 
     const embed = {
-      title: `${raid.raidAlias} ${raid.difficulty} ${totalRounds}수 모집`,
+      title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} ${totalRounds}수 모집`,
       description: `${raid.raidName} 파티원을 모집합니다`,
       color: 0x9B59B6,
       fields: [
@@ -82,7 +82,7 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
     : "없음"
 
   const embed = {
-    title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` [${raid.difficulty_level}]` : ""} 모집`,
+    title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} 모집`,
     description: `${raid.raidName} 파티원을 모집합니다`,
     color: 0x9B59B6,
     fields: [
@@ -264,7 +264,7 @@ export async function sendTrainAnnouncement(channelId, trainInfo, hostName, raid
     .join("\n")
 
   const embed = {
-    title: `${trainInfo.trainLabel} (${trainInfo.maxPlayers}인) 모집`,
+    title: `${trainInfo.trainLabel} (${trainInfo.maxPlayers}인)${trainInfo.difficulty_level ? ` (${trainInfo.difficulty_level})` : ""} 모집`,
     description: "파티원을 모집합니다",
     color: 0x9B59B6,
     fields: [
@@ -357,7 +357,7 @@ export async function updateTrainDiscordMessage(raid) {
   const label = raid.trainLabel || "N종 레이드"
 
   const embedData = {
-    title: `${label} (${raid.maxPlayers}인) 모집`,
+    title: `${label} (${raid.maxPlayers}인)${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} 모집`,
     description: "파티원을 모집합니다",
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [
@@ -464,7 +464,7 @@ export async function updateTrainRaidDiscordMessage(trainRaid) {
   const embedColor = { "모집중": 0x9B59B6, "모집완료": 0x3498DB, "출발완료": 0xE67E22, "취소": 0x95A5A6 }
 
   const embedData = {
-    title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인) 모집`,
+    title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인)${trainRaid.difficulty_level ? ` (${trainRaid.difficulty_level})` : ""} 모집`,
     description: "파티원을 모집합니다",
     color: embedColor[trainRaid.status] ?? 0x9B59B6,
     fields: [
@@ -556,7 +556,7 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
     : "구성 정보 없음"
 
   const embed = {
-    title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인) 모집`,
+    title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인)${trainRaid.difficulty_level ? ` (${trainRaid.difficulty_level})` : ""} 모집`,
     description: "파티원을 모집합니다",
     color: 0x9B59B6,
     fields: [
@@ -637,7 +637,7 @@ async function updateNsuDiscordMessage(raid) {
   })
 
   const embedData = {
-    title: `${raid.raidAlias} ${raid.difficulty} ${raid.totalRounds}수 모집`,
+    title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} ${raid.totalRounds}수 모집`,
     description: `${raid.raidName} 파티원을 모집합니다`,
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [
@@ -720,7 +720,7 @@ export async function updateDiscordMessage(raid) {
   }
 
   const embedData = {
-    title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` [${raid.difficulty_level}]` : ""} 모집`,
+    title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} 모집`,
     description: `${raid.raidName} 파티원을 모집합니다`,
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [

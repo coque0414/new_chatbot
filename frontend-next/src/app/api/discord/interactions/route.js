@@ -359,6 +359,7 @@ export async function POST(request) {
               { type: 1, components: [{ type: 4, custom_id: "mobaChul", label: "모바출 여부 (y/n)", style: 1, placeholder: "y 또는 n", required: true, min_length: 1, max_length: 1 }] },
               { type: 1, components: [{ type: 4, custom_id: "date", label: "날짜 (YYYY-MM-DD)", style: 1, placeholder: "2026-04-01", required: false }] },
               { type: 1, components: [{ type: 4, custom_id: "time", label: "시간 (HH:MM)", style: 1, placeholder: "21:00", required: false }] },
+              { type: 1, components: [{ type: 4, custom_id: "difficulty_level", label: "숙련도", style: 1, placeholder: "헤딩 / 트라이 / 클경 / 반숙 / 숙련 / 숙제", required: true, min_length: 2, max_length: 4 }] },
             ]
           }
         })
@@ -413,6 +414,7 @@ export async function POST(request) {
                 { type: 1, components: [{ type: 4, custom_id: "mobachul", label: "모바출 여부 (y/n)", style: 1, placeholder: "y 또는 n", required: true, min_length: 1, max_length: 1 }] },
                 { type: 1, components: [{ type: 4, custom_id: "date", label: "날짜 (YYYY-MM-DD, 모바출이면 비워두세요)", style: 1, placeholder: "2026-04-10", required: false }] },
                 { type: 1, components: [{ type: 4, custom_id: "time", label: "시간 (HH:MM, 모바출이면 비워두세요)", style: 1, placeholder: "21:00", required: false }] },
+                { type: 1, components: [{ type: 4, custom_id: "difficulty_level", label: "숙련도", style: 1, placeholder: "헤딩 / 트라이 / 클경 / 반숙 / 숙련 / 숙제", required: true, min_length: 2, max_length: 4 }] },
               ],
             },
           })
@@ -480,6 +482,7 @@ export async function POST(request) {
               { type: 1, components: [{ type: 4, custom_id: "mobachul", label: "모바출 여부 (y/n)", style: 1, placeholder: "y 또는 n", required: true, min_length: 1, max_length: 1 }] },
               { type: 1, components: [{ type: 4, custom_id: "date", label: "날짜 (YYYY-MM-DD, 모바출이면 비워두세요)", style: 1, placeholder: "2026-04-10", required: false }] },
               { type: 1, components: [{ type: 4, custom_id: "time", label: "시간 (HH:MM, 모바출이면 비워두세요)", style: 1, placeholder: "21:00", required: false }] },
+              { type: 1, components: [{ type: 4, custom_id: "difficulty_level", label: "숙련도", style: 1, placeholder: "헤딩 / 트라이 / 클경 / 반숙 / 숙련 / 숙제", required: true, min_length: 2, max_length: 4 }] },
             ],
           },
         })
@@ -1224,6 +1227,7 @@ export async function POST(request) {
         const mobachul = comps[0].components[0].value.toLowerCase().trim()
         const dateInput = (comps[1].components[0].value || "").trim()
         const timeInput = (comps[2].components[0].value || "").trim()
+        const difficultyLevelInput = (comps[3]?.components[0]?.value || "").trim() || null
 
         if (!["y", "n"].includes(mobachul)) {
           return Response.json({ type: 4, data: { content: "❌ 모바출 여부는 y 또는 n으로 입력해주세요.", flags: 64 } })
@@ -1282,6 +1286,7 @@ export async function POST(request) {
           difficulty: firstRaid.difficulty || "",
           maxPlayers,
           isMobaChul,
+          difficulty_level: difficultyLevelInput,
           date:             isMobaChul ? "" : dateInput,
           time:             isMobaChul ? "" : timeInput,
           discordChannelId: settings.announcementChannelId,
@@ -1312,6 +1317,7 @@ export async function POST(request) {
         const mobaChulInput = comps[0].components[0].value.toLowerCase().trim()
         const dateInput = (comps[1].components[0].value || "").trim()
         const timeInput = (comps[2].components[0].value || "").trim()
+        const difficultyLevelInput = (comps[3]?.components[0]?.value || "").trim() || null
 
         if (!["y", "n"].includes(mobaChulInput)) {
           return Response.json({ type: 4, data: { content: "❌ 모바출 여부는 y 또는 n으로 입력해주세요.", flags: 64 } })
@@ -1361,6 +1367,7 @@ export async function POST(request) {
           date: isMobaChul ? "" : dateInput,
           time: isMobaChul ? "" : timeInput,
           isMobaChul,
+          difficulty_level: difficultyLevelInput,
           discordChannelId: settings.announcementChannelId,
           guildId,
           hostId,

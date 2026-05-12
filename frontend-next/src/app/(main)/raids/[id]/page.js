@@ -334,7 +334,7 @@ export default function RaidDetailPage() {
                 </div>
                 {!raid.isTrain && (
                   <span className={`text-2xl font-bold ${difficultyColor[raid.difficulty] || ""}`}>
-                    {raid.difficulty}
+                    {raid.difficulty}{raid.difficulty_level ? ` (${raid.difficulty_level})` : ""}
                   </span>
                 )}
               </div>
