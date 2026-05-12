@@ -37,9 +37,14 @@ export async function POST(request) {
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
     const discordId = session.user.discordId || session.user.id
 
-    const { characterName } = await request.json()
+    const body = await request.json()
+    const characterName = body.characterName
+    const accountIndex = Number(body.accountIndex ?? 1)
     if (!characterName?.trim()) {
       return Response.json({ error: "캐릭터명을 입력해주세요." }, { status: 400 })
+    }
+    if (![1, 2, 3, 4].includes(accountIndex)) {
+      return Response.json({ error: "유효하지 않은 계정 번호입니다." }, { status: 400 })
     }
 
     // 로아 API 호출
@@ -104,17 +109,45 @@ export async function POST(request) {
     }
 
     await connectDB()
-    await UserCharacters.findOneAndUpdate(
-      { discordId },
-      {
-        discordId,
+    const existing = await UserCharacters.findOne({ discordId })
+    const currentAccounts = existing?.accounts || []
+    const accountExists = currentAccounts.some(a => a.accountIndex === accountIndex)
+
+    if (!accountExists && currentAccounts.length >= 4) {
+      return Response.json({ error: "최대 4개 계정까지 연동 가능합니다." }, { status: 400 })
+    }
+
+    const accountEntry = {
+      accountIndex,
+      representCharacter: characterName.trim(),
+      characters,
+      lastSyncAt: new Date(),
+    }
+
+    let update
+    if (accountExists) {
+      update = { $set: { "accounts.$[elem]": accountEntry } }
+    } else {
+      update = { $push: { accounts: accountEntry } }
+    }
+
+    if (accountIndex === 1) {
+      update.$set = {
+        ...(update.$set || {}),
         representCharacter: characterName.trim(),
         characters,
         verifiedAt: new Date(),
         lastSyncAt: new Date(),
-      },
-      { upsert: true, new: true }
-    )
+      }
+    }
+
+    const options = {
+      upsert: true,
+      new: true,
+      ...(accountExists ? { arrayFilters: [{ "elem.accountIndex": accountIndex }] } : {}),
+    }
+
+    await UserCharacters.findOneAndUpdate({ discordId }, update, options)
 
     return Response.json({ ok: true, characters })
   } catch (e) {

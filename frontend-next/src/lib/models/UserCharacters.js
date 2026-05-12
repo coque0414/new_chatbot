@@ -12,6 +12,18 @@ const UserCharactersSchema = new mongoose.Schema({
   }],
   verifiedAt: Date,
   lastSyncAt: Date,
+  accounts: [{
+    accountIndex:       { type: Number, required: true },
+    representCharacter: { type: String, required: true },
+    characters: [{
+      name:        String,
+      class:       String,
+      level:       Number,
+      server:      String,
+      combatPower: { type: Number, default: null },
+    }],
+    lastSyncAt: Date,
+  }],
 }, {
   timestamps: true,
 })
