@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import { sendRaidAnnouncement, sendTrainAnnouncement } from "@/lib/discord"
 import { getLoaWeekStart } from "@/lib/loaWeek"
+import { SUPPORTER_CLASSES } from "@/lib/lostarkData"
 
 // ── IP 기반 Rate Limit (POST /api/raids: 1분에 10회) ──
 const raidCreateRateLimit = new Map()
@@ -43,9 +44,10 @@ export async function POST(request) {
     const {
       raidName, raidAlias, raidTag, difficulty,
       maxPlayers, date, time, isMobaChul, discordChannelId, guildId,
-      hostRole,      // "dealer" | "support" | "none"
-      hostCharacter, // { name, class, level, combatPower } | null
-      trains,        // N종 기차 모드: 레이드 배열
+      hostRole,           // "dealer" | "support" | "none"
+      hostCharacter,      // { name, class, level, combatPower } | null
+      hostNsuCharacters,  // { "1": { name, class, level, combatPower }, ... } | null
+      trains,             // N종 기차 모드: 레이드 배열
       notifyMinutesBefore: rawNotify,
       totalRounds: rawTotalRounds,
     } = body
@@ -160,6 +162,35 @@ export async function POST(request) {
       characterCombatPower: hostCharacter?.combatPower || null,
     }] : []
 
+    // N수 주최자 rounds 구성
+    const buildRounds = () => {
+      if (totalRounds < 2) return []
+      return Array.from({ length: totalRounds }, (_, i) => {
+        const order = i + 1
+        const roundParticipants = []
+        if (hostRole && hostRole !== "none" && hostNsuCharacters?.[order]) {
+          const hc = hostNsuCharacters[order]
+          if (hc?.name) {
+            const role = SUPPORTER_CLASSES.includes(hc.class) ? "support" : "dealer"
+            roundParticipants.push({
+              userId: hostUserId,
+              userName: session.user.name,
+              userImage: session.user.image,
+              role,
+              characterName: hc.name || null,
+              characterClass: hc.class || null,
+              characterLevel: hc.level || null,
+              characterCombatPower: hc.combatPower || null,
+            })
+          }
+        }
+        return { order, participants: roundParticipants }
+      })
+    }
+
+    // N수이고 주최자가 있으면 top-level participants는 비움 (rounds에만 추가)
+    const topParticipants = totalRounds >= 2 ? [] : participants
+
     // 1. MongoDB 먼저 저장
     const raid = await Raid.create({
       raidName,
@@ -175,13 +206,11 @@ export async function POST(request) {
       hostId: hostUserId,
       hostName: session.user.name,
       hostImage: session.user.image,
-      participants,
+      participants: topParticipants,
       status: "모집중",
       notifyMinutesBefore,
       totalRounds,
-      rounds: totalRounds >= 2
-        ? Array.from({ length: totalRounds }, (_, i) => ({ order: i + 1, participants: [] }))
-        : [],
+      rounds: buildRounds(),
     })
 
     // 2. Discord 메시지 전송

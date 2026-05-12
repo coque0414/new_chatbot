@@ -863,6 +863,24 @@ export async function POST(request) {
 
         if (!raid) {
           content = "❌ 레이드를 찾을 수 없습니다."
+        } else if (raid.totalRounds >= 2) {
+          // N수 포맷
+          const supporterSlots = raid.maxPlayers / 4
+          const dealerSlots = raid.maxPlayers - supporterSlots
+          let totalParticipants = 0
+          const roundTexts = (raid.rounds || []).sort((a, b) => a.order - b.order).map(r => {
+            const d = r.participants.filter(p => p.role === "dealer")
+            const s = r.participants.filter(p => p.role === "support")
+            totalParticipants += d.length + s.length
+            const dText = d.length > 0
+              ? d.map((p, i) => { const c = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}` : ""; return `${i + 1}. ⚔️ ${p.userName}${c}` }).join("\n")
+              : "없음"
+            const sText = s.length > 0
+              ? s.map((p, i) => { const c = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}` : ""; return `${i + 1}. 🛡️ ${p.userName}${c}` }).join("\n")
+              : "없음"
+            return `━━ ${r.order}수 ━━\n딜러 (${d.length}/${dealerSlots}): ${dText}\n서포터 (${s.length}/${supporterSlots}): ${sText}`
+          })
+          content = `📋 **${raid.raidAlias} ${raid.difficulty} ${raid.totalRounds}수 참가자 명단** (${totalParticipants}/${raid.maxPlayers * raid.totalRounds}명)\n\n${roundTexts.join("\n\n")}`
         } else {
           const dealers    = raid.participants.filter(p => p.role === "dealer")
           const supporters = raid.participants.filter(p => p.role === "support")
@@ -1061,6 +1079,7 @@ export async function POST(request) {
         })
         if (allFull) raid.status = "모집완료"
 
+        raid.markModified('rounds')
         await raid.save()
         await NsuSession.deleteOne({ userId, raidId })
         updateDiscordMessage(raid).catch(e => console.error("N수 Discord 업데이트 실패:", e))
@@ -1075,91 +1094,47 @@ export async function POST(request) {
           data: {
             custom_id: "char_auth_modal_register",
             title: "캐릭터 인증",
-            components: [{
-              type: 1,
-              components: [{
-                type: 4,
-                custom_id: "character_name",
-                label: "대표 캐릭터명을 입력하세요",
-                placeholder: "캐릭터명 입력 (예: 홍길동)",
-                style: 1,
-                required: true,
-              }],
-            }],
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "char_1", label: "계정 1 대표 캐릭터명 (필수)", placeholder: "캐릭터명 입력 (예: 홍길동)", style: 1, required: true }] },
+              { type: 1, components: [{ type: 4, custom_id: "char_2", label: "계정 2 대표 캐릭터명 (선택)", placeholder: "캐릭터명 입력", style: 1, required: false }] },
+              { type: 1, components: [{ type: 4, custom_id: "char_3", label: "계정 3 대표 캐릭터명 (선택)", placeholder: "캐릭터명 입력", style: 1, required: false }] },
+              { type: 1, components: [{ type: 4, custom_id: "char_4", label: "계정 4 대표 캐릭터명 (선택)", placeholder: "캐릭터명 입력", style: 1, required: false }] },
+            ],
           },
         })
       }
 
       if (customId === "char_auth_update") {
         const existing = await UserCharacters.findOne({ discordId: userId })
-        if (!existing?.representCharacter) {
+        if (!existing?.representCharacter && (!existing?.accounts || existing.accounts.length === 0)) {
           return Response.json({ type: 4, data: { content: "❌ 등록된 캐릭터가 없습니다. 먼저 인증해주세요.", flags: 64 } })
         }
-        if (existing.accounts && existing.accounts.length >= 2) {
-          return Response.json({
-            type: 4,
-            data: {
-              flags: 64,
-              content: "변경할 계정을 선택하세요:",
-              components: [{
-                type: 1,
-                components: [{
-                  type: 3,
-                  custom_id: "char_auth_select_account",
-                  placeholder: "계정 선택",
-                  options: existing.accounts.map(a => ({
-                    label: `계정 ${a.accountIndex} (${a.representCharacter})`,
-                    value: String(a.accountIndex),
-                  })),
-                }],
-              }],
-            },
-          })
+        const getPlaceholder = (idx) => {
+          if (existing?.accounts?.length > 0) {
+            const acc = existing.accounts.find(a => a.accountIndex === idx)
+            return acc ? `현재: ${acc.representCharacter}` : "미등록"
+          }
+          if (idx === 1 && existing?.representCharacter) return `현재: ${existing.representCharacter}`
+          return "미등록"
         }
         return Response.json({
           type: 9,
           data: {
-            custom_id: "char_auth_modal_update_1",
+            custom_id: "char_auth_modal_update",
             title: "캐릭터 변경",
-            components: [{
-              type: 1,
-              components: [{
-                type: 4,
-                custom_id: "character_name",
-                label: "변경할 대표 캐릭터명을 입력하세요",
-                placeholder: `현재: ${existing.representCharacter}`,
-                style: 1,
-                required: true,
-              }],
-            }],
+            components: [
+              { type: 1, components: [{ type: 4, custom_id: "char_1", label: "계정 1 대표 캐릭터명 (필수)", placeholder: getPlaceholder(1), style: 1, required: false }] },
+              { type: 1, components: [{ type: 4, custom_id: "char_2", label: "계정 2 대표 캐릭터명 (선택)", placeholder: getPlaceholder(2), style: 1, required: false }] },
+              { type: 1, components: [{ type: 4, custom_id: "char_3", label: "계정 3 대표 캐릭터명 (선택)", placeholder: getPlaceholder(3), style: 1, required: false }] },
+              { type: 1, components: [{ type: 4, custom_id: "char_4", label: "계정 4 대표 캐릭터명 (선택)", placeholder: getPlaceholder(4), style: 1, required: false }] },
+            ],
           },
         })
       }
 
-      // ── 계정 선택 → 캐릭터 변경 모달 ─────────────────────────────────────
+      // ── 계정 선택 핸들러 (레거시, 더 이상 사용되지 않음) ──────────────────
       if (customId === "char_auth_select_account") {
-        const accountIndex = interaction.data.values[0]
-        const existing = await UserCharacters.findOne({ discordId: userId })
-        const account = existing?.accounts?.find(a => String(a.accountIndex) === accountIndex)
-        const placeholder = account ? `현재: ${account.representCharacter}` : "캐릭터명 입력"
-        return Response.json({
-          type: 9,
-          data: {
-            custom_id: `char_auth_modal_update_${accountIndex}`,
-            title: `계정 ${accountIndex} 캐릭터 변경`,
-            components: [{
-              type: 1,
-              components: [{
-                type: 4,
-                custom_id: "character_name",
-                label: "변경할 대표 캐릭터명을 입력하세요",
-                placeholder,
-                style: 1,
-                required: true,
-              }],
-            }],
-          },
-        })
+        return Response.json({ type: 4, data: { content: "❌ 캐릭터 변경은 변경 버튼을 다시 눌러주세요.", flags: 64 } })
       }
 
       if (customId === "char_auth_remove") {
@@ -1521,33 +1496,31 @@ export async function POST(request) {
         })
       }
 
-      // ── 캐릭터 인증 모달 (char_auth_modal_register / char_auth_modal_update_N) ──
-      const charAuthModalUpdateMatch = customId.match(/^char_auth_modal_update_(\d+)$/)
-      if (customId === "char_auth_modal_register" || charAuthModalUpdateMatch) {
-        const accountIndex = charAuthModalUpdateMatch ? parseInt(charAuthModalUpdateMatch[1]) : null
-        const characterName = interaction.data.components[0].components[0].value.trim()
-
-        let characters
-        try {
-          characters = await fetchLostarkCharacters(characterName)
-        } catch (e) {
-          return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.", flags: 64 } })
+      // ── 캐릭터 인증 모달 4칸 (char_auth_modal_register) ──────────────────
+      if (customId === "char_auth_modal_register") {
+        const charNames = [
+          interaction.data.components[0].components[0].value.trim(),
+          (interaction.data.components[1]?.components[0]?.value || "").trim(),
+          (interaction.data.components[2]?.components[0]?.value || "").trim(),
+          (interaction.data.components[3]?.components[0]?.value || "").trim(),
+        ]
+        if (!charNames[0]) {
+          return Response.json({ type: 4, data: { content: "❌ 계정 1 캐릭터명은 필수입니다.", flags: 64 } })
         }
-        if (!characters) {
-          return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.", flags: 64 } })
-        }
-
-        if (accountIndex) {
-          const accountEntry = {
-            accountIndex,
-            representCharacter: characterName,
-            characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })),
-            lastSyncAt: new Date(),
+        const results = []
+        for (let i = 0; i < charNames.length; i++) {
+          if (!charNames[i]) continue
+          const accountIndex = i + 1
+          let characters
+          try { characters = await fetchLostarkCharacters(charNames[i]) } catch (e) {
+            return Response.json({ type: 4, data: { content: `❌ 계정 ${accountIndex} 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.`, flags: 64 } })
           }
-          const topLevelUpdate = accountIndex === 1
-            ? { representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() }
-            : {}
-
+          if (!characters) return Response.json({ type: 4, data: { content: `❌ 계정 ${accountIndex} 캐릭터를 찾을 수 없습니다.`, flags: 64 } })
+          results.push({ accountIndex, characterName: charNames[i], characters })
+        }
+        for (const { accountIndex, characterName: charName, characters } of results) {
+          const accountEntry = { accountIndex, representCharacter: charName, characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
+          const topLevelUpdate = accountIndex === 1 ? { representCharacter: charName, characters, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
           const updated = await UserCharacters.findOneAndUpdate(
             { discordId: userId, "accounts.accountIndex": accountIndex },
             { $set: { "accounts.$[elem]": accountEntry, ...topLevelUpdate } },
@@ -1556,36 +1529,78 @@ export async function POST(request) {
           if (!updated) {
             const pushUpdate = { $push: { accounts: accountEntry } }
             if (accountIndex === 1) pushUpdate.$set = topLevelUpdate
-            await UserCharacters.findOneAndUpdate(
-              { discordId: userId },
-              pushUpdate,
-              { upsert: true }
-            )
+            await UserCharacters.findOneAndUpdate({ discordId: userId }, pushUpdate, { upsert: true })
           }
-        } else {
-          await UserCharacters.findOneAndUpdate(
-            { discordId: userId },
-            { discordId: userId, representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() },
-            { upsert: true, new: true }
-          )
         }
+        return Response.json({ type: 4, data: { flags: 64, content: `✅ ${results.length}개 계정 캐릭터 인증이 완료되었습니다!\n레이드 참가 시 캐릭터 정보와 함께 참가할 수 있어요!` } })
+      }
 
+      // ── 캐릭터 변경 모달 4칸 (char_auth_modal_update) ───────────────────
+      if (customId === "char_auth_modal_update") {
+        const charNames = [
+          interaction.data.components[0].components[0].value.trim(),
+          (interaction.data.components[1]?.components[0]?.value || "").trim(),
+          (interaction.data.components[2]?.components[0]?.value || "").trim(),
+          (interaction.data.components[3]?.components[0]?.value || "").trim(),
+        ]
+        if (!charNames[0]) {
+          return Response.json({ type: 4, data: { content: "❌ 계정 1 캐릭터명은 필수입니다.", flags: 64 } })
+        }
+        const results = []
+        for (let i = 0; i < charNames.length; i++) {
+          if (!charNames[i]) continue
+          const accountIndex = i + 1
+          let characters
+          try { characters = await fetchLostarkCharacters(charNames[i]) } catch (e) {
+            return Response.json({ type: 4, data: { content: `❌ 계정 ${accountIndex} 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.`, flags: 64 } })
+          }
+          if (!characters) return Response.json({ type: 4, data: { content: `❌ 계정 ${accountIndex} 캐릭터를 찾을 수 없습니다.`, flags: 64 } })
+          results.push({ accountIndex, characterName: charNames[i], characters })
+        }
+        for (const { accountIndex, characterName: charName, characters } of results) {
+          const accountEntry = { accountIndex, representCharacter: charName, characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
+          const topLevelUpdate = accountIndex === 1 ? { representCharacter: charName, characters, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
+          const updated = await UserCharacters.findOneAndUpdate(
+            { discordId: userId, "accounts.accountIndex": accountIndex },
+            { $set: { "accounts.$[elem]": accountEntry, ...topLevelUpdate } },
+            { arrayFilters: [{ "elem.accountIndex": accountIndex }], new: true }
+          )
+          if (!updated) {
+            const pushUpdate = { $push: { accounts: accountEntry } }
+            if (accountIndex === 1) pushUpdate.$set = topLevelUpdate
+            await UserCharacters.findOneAndUpdate({ discordId: userId }, pushUpdate, { upsert: true })
+          }
+        }
+        return Response.json({ type: 4, data: { flags: 64, content: `✅ ${results.length}개 계정 캐릭터 정보가 변경되었습니다!` } })
+      }
+
+      // ── 캐릭터 변경 모달 단일 계정 (char_auth_modal_update_N, 레거시) ────
+      const charAuthModalUpdateMatch = customId.match(/^char_auth_modal_update_(\d+)$/)
+      if (charAuthModalUpdateMatch) {
+        const accountIndex = parseInt(charAuthModalUpdateMatch[1])
+        const characterName = interaction.data.components[0].components[0].value.trim()
+        let characters
+        try { characters = await fetchLostarkCharacters(characterName) } catch (e) {
+          return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.", flags: 64 } })
+        }
+        if (!characters) return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.", flags: 64 } })
+
+        const accountEntry = { accountIndex, representCharacter: characterName, characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
+        const topLevelUpdate = accountIndex === 1 ? { representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
+        const updated = await UserCharacters.findOneAndUpdate(
+          { discordId: userId, "accounts.accountIndex": accountIndex },
+          { $set: { "accounts.$[elem]": accountEntry, ...topLevelUpdate } },
+          { arrayFilters: [{ "elem.accountIndex": accountIndex }], new: true }
+        )
+        if (!updated) {
+          const pushUpdate = { $push: { accounts: accountEntry } }
+          if (accountIndex === 1) pushUpdate.$set = topLevelUpdate
+          await UserCharacters.findOneAndUpdate({ discordId: userId }, pushUpdate, { upsert: true })
+        }
         const maxChar = characters.reduce((a, b) => b.level > a.level ? b : a, characters[0])
-        const actionLabel = customId === "char_auth_modal_register" ? "인증" : "변경"
         return Response.json({
           type: 4,
-          data: {
-            flags: 64,
-            content: [
-              `✅ **${characterName}** 캐릭터 ${actionLabel}이 완료되었습니다!`,
-              "",
-              "📋 **원정대 정보**",
-              `총 ${characters.length}개 캐릭터 등록`,
-              `최고 레벨: ${maxChar.level} (${maxChar.class})`,
-              "",
-              "레이드 참가 시 캐릭터 정보와 함께 참가할 수 있어요!",
-            ].join("\n"),
-          },
+          data: { flags: 64, content: [`✅ **${characterName}** 캐릭터 변경이 완료되었습니다!`, "", "📋 **원정대 정보**", `총 ${characters.length}개 캐릭터 등록`, `최고 레벨: ${maxChar.level} (${maxChar.class})`, "", "레이드 참가 시 캐릭터 정보와 함께 참가할 수 있어요!"].join("\n") },
         })
       }
 
