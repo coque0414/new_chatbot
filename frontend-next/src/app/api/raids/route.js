@@ -47,7 +47,10 @@ export async function POST(request) {
       hostCharacter, // { name, class, level, combatPower } | null
       trains,        // N종 기차 모드: 레이드 배열
       notifyMinutesBefore: rawNotify,
+      totalRounds: rawTotalRounds,
     } = body
+
+    const totalRounds = [1, 2, 3, 4].includes(Number(rawTotalRounds)) ? Number(rawTotalRounds) : 1
 
     const notifyMinutesBefore = [10, 20, 30].includes(rawNotify) ? rawNotify : 30
 
@@ -175,6 +178,10 @@ export async function POST(request) {
       participants,
       status: "모집중",
       notifyMinutesBefore,
+      totalRounds,
+      rounds: totalRounds >= 2
+        ? Array.from({ length: totalRounds }, (_, i) => ({ order: i + 1, participants: [] }))
+        : [],
     })
 
     // 2. Discord 메시지 전송

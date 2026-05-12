@@ -56,6 +56,23 @@ const RaidSchema = new mongoose.Schema({
     order: Number,
   }],
 
+  // N수 레이드
+  totalRounds: { type: Number, default: 1 },
+  rounds: [{
+    order: Number,
+    participants: [{
+      userId: String,
+      userName: String,
+      userImage: String,
+      role: String,
+      characterName:        String,
+      characterClass:       String,
+      characterLevel:       Number,
+      characterCombatPower: Number,
+      joinedAt: { type: Date, default: Date.now }
+    }]
+  }],
+
   // 스케줄러
   dmSent: { type: Boolean, default: false },                     // DM 발송 여부
   voiceChannelId: { type: String, default: null },               // 생성된 음성채널 ID

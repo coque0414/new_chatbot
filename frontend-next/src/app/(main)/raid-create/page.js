@@ -133,6 +133,10 @@ export default function RaidCreatePage() {
   const [raidDropdownOpen, setRaidDropdownOpen] = useState(false)
   const [hostRole, setHostRole] = useState("dealer")
 
+  // N수 레이드
+  const [isNsuEnabled, setIsNsuEnabled] = useState(false)
+  const [totalRounds, setTotalRounds] = useState(1)
+
   // 알림 설정
   const [notifyMinutes, setNotifyMinutes] = useState(30)
   const [trainNotifyMinutes, setTrainNotifyMinutes] = useState(30)
@@ -168,6 +172,8 @@ export default function RaidCreatePage() {
     setSubmitError(null)
     setSelectedCharacter(null)
     setTrainSelectedCharacter(null)
+    setIsNsuEnabled(false)
+    setTotalRounds(1)
     if (tab === "train") {
       setSelectedRaid(null)
       setSelectedDifficulty("")
@@ -713,6 +719,41 @@ export default function RaidCreatePage() {
                 )}
               </div>
 
+              {/* N수 레이드 */}
+              <div>
+                <div className={`flex items-center justify-between px-4 py-3 rounded-xl border
+                  ${d ? "bg-white/5 border-white/10" : "bg-purple-50 border-purple-100"}`}>
+                  <div>
+                    <p className={`text-sm font-medium ${d ? "text-white" : "text-gray-800"}`}>N수 레이드</p>
+                    <p className={`text-xs ${d ? "text-gray-500" : "text-gray-400"}`}>같은 레이드를 여러 번 돌아요</p>
+                  </div>
+                  <button
+                    onClick={() => { const next = !isNsuEnabled; setIsNsuEnabled(next); if (!next) setTotalRounds(1) }}
+                    style={{ flexShrink: 0 }}
+                    className={`relative inline-flex w-11 h-6 rounded-full transition-colors
+                      ${isNsuEnabled ? d ? "bg-amber-500" : "bg-purple-600" : d ? "bg-white/20" : "bg-gray-200"}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200
+                      ${isNsuEnabled ? "translate-x-5" : "translate-x-0"}`} />
+                  </button>
+                </div>
+                {isNsuEnabled && (
+                  <div className="flex gap-2 mt-2">
+                    {[2, 3, 4].map(n => (
+                      <button
+                        key={n}
+                        onClick={() => setTotalRounds(n)}
+                        className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-colors
+                          ${totalRounds === n
+                            ? d ? "bg-amber-500/20 border-amber-500/50 text-amber-400" : "bg-purple-600 border-purple-600 text-white"
+                            : d ? "bg-white/5 border-white/10 text-gray-400 hover:border-white/20" : "bg-white border-purple-100 text-gray-500 hover:border-purple-300"
+                          }`}>
+                        {n}수
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* 주최자 참가 여부 */}
               {renderHostRole(hostRole, setHostRole, "hostRole", filteredSingleChars, selectedCharacter, setSelectedCharacter)}
 
@@ -802,6 +843,7 @@ export default function RaidCreatePage() {
                             combatPower: selectedCharacter.combatPower || null,
                           } : null,
                           notifyMinutesBefore: notifyMinutes,
+                          totalRounds: isNsuEnabled ? totalRounds : 1,
                         }),
                       })
                       const data = await res.json()

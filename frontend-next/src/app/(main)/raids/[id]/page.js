@@ -497,6 +497,13 @@ export default function RaidDetailPage() {
                       onClick={handleLeave}>
                       {leaving ? "⏳" : "❌"} 참가 취소
                     </Button>
+                  ) : raid.totalRounds >= 2 ? (
+                    <Button
+                      className={`w-full py-3 font-bold
+                        ${d ? "bg-purple-500/80 hover:bg-purple-500 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"}`}
+                      onClick={() => alert('3단계에서 구현 예정')}>
+                      ⚔️ 레이드 참가
+                    </Button>
                   ) : (
                     // 미참가자 안내
                     <p className={`text-center text-sm ${d ? "text-gray-500" : "text-gray-400"}`}>
