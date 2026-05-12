@@ -242,6 +242,11 @@ export default function RaidDetailPage() {
         return
       }
     }
+    const charNames = Array.from({ length: raid.totalRounds }, (_, i) => nsuSelections[i + 1]?.characterName).filter(Boolean)
+    if (charNames.length !== new Set(charNames).size) {
+      setNsuError("같은 캐릭터를 여러 수에 배치할 수 없습니다")
+      return
+    }
     setNsuJoining(true)
     setNsuError(null)
     try {
@@ -672,6 +677,13 @@ export default function RaidDetailPage() {
                             ))
                         })()}
                       </select>
+                      {sel.characterName && Object.entries(nsuSelections)
+                        .filter(([k]) => parseInt(k) !== order)
+                        .some(([, v]) => v.characterName === sel.characterName) && (
+                        <p className={`text-xs mt-1 mb-2 ${d ? "text-orange-400" : "text-orange-500"}`}>
+                          ⚠️ 이미 다른 수에 배치된 캐릭터입니다
+                        </p>
+                      )}
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleNsuRoleToggle(order, "dealer")}

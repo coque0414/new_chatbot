@@ -1116,9 +1116,12 @@ export async function POST(request) {
         raid.markModified('rounds')
         await raid.save()
         await NsuSession.deleteOne({ userId, raidId })
-        updateDiscordMessage(raid).catch(e => console.error("N수 Discord 업데이트 실패:", e))
 
-        return Response.json({ type: 4, data: { content: `✅ **${userName}**님이 ${raid.totalRounds}수 레이드에 참가했습니다!`, flags: 64 } })
+        const response = Response.json({ type: 4, data: { content: `✅ **${userName}**님이 ${raid.totalRounds}수 레이드에 참가했습니다!`, flags: 64 } })
+        const updatedRaid = await Raid.findById(raidId)
+        if (updatedRaid) updateDiscordMessage(updatedRaid).catch(e => console.error("N수 Discord 업데이트 실패:", e))
+
+        return response
       }
 
       // ── 캐릭터 인증 버튼 (char_auth_register / char_auth_update / char_auth_remove) ──
