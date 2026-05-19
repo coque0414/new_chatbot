@@ -219,7 +219,7 @@ export async function POST(request) {
       try {
         const discordMessageId = await sendRaidAnnouncement(
           discordChannelId,
-          { raidName, raidAlias, difficulty, maxPlayers, date, time, isMobaChul, totalRounds },
+          { raidName, raidAlias, difficulty, maxPlayers, date, time, isMobaChul, totalRounds, difficulty_level: difficultyLevel || null, rounds: buildRounds() },
           session.user.name,
           raid._id.toString(),
           participants
