@@ -25,8 +25,8 @@ const DISCORD_API = "https://discord.com/api/v10"
 // ── 레이드 데이터 ──────────────────────────────────────────────────────────
 const RAID_DATA = {
   ekidna:    { raidName: "붉어진 백야의 나선",        raidAlias: "에키드나",   raidTag: "서막",   maxPlayers: 8,  difficulties: ["노말", "하드"] },
-  aegir:     { raidName: "대지를 부수는 업화의 궤적",  raidAlias: "에기르",    raidTag: "1막",   maxPlayers: 8,  difficulties: ["노말", "하드", "익스트림 노말", "익스트림 하드", "나이트메어"] },
-  abrelshud: { raidName: "부유하는 악몽의 진혼곡",     raidAlias: "아브렐슈드", raidTag: "2막",   maxPlayers: 8,  difficulties: ["노말", "하드"] },
+  aegir:     { raidName: "대지를 부수는 업화의 궤적",  raidAlias: "에기르",    raidTag: "1막",   maxPlayers: 8,  difficulties: ["노말", "하드"] },
+  abrelshud: { raidName: "부유하는 악몽의 진혼곡",     raidAlias: "아브렐슈드", raidTag: "2막",   maxPlayers: 8,  difficulties: ["노말", "하드", "익스트림 노말", "익스트림 하드", "나이트메어"] },
   mordoom:   { raidName: "칠흑, 폭풍의 밤",           raidAlias: "모르둠",    raidTag: "3막",   maxPlayers: 8,  difficulties: ["노말", "하드"] },
   armoche:   { raidName: "파멸의 성채",               raidAlias: "아르모체",  raidTag: "4막",   maxPlayers: 8,  difficulties: ["노말", "하드"] },
   kazeros:   { raidName: "최후의 날",                 raidAlias: "카제로스",  raidTag: "종막",  maxPlayers: 8,  difficulties: ["노말", "하드"] },
