@@ -13,11 +13,28 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
 
   // ── N수 레이드 초기 공고 ──
   if (totalRounds >= 2) {
-    const roundFields = Array.from({ length: totalRounds }, (_, i) => ({
-      name: `━━ ${i + 1}수 ━━`,
-      value: `⚔️ 딜러 (0/${dealerSlots}): -\n🛡️ 서포터 (0/${supporterSlots}): -`,
-      inline: false,
-    }))
+    const roundFields = Array.from({ length: totalRounds }, (_, i) => {
+      const order = i + 1
+      const roundData = (raid.rounds || []).find(r => r.order === order)
+      const participants = roundData?.participants || []
+      const dealers = participants.filter(p => p.role === "dealer")
+      const supporters = participants.filter(p => p.role === "support")
+      const dealerText = dealers.length > 0
+        ? dealers.map(p => p.characterName
+            ? `${p.characterName}(${p.characterClass}) Lv.${p.characterLevel}`
+            : p.userName).join(", ")
+        : "-"
+      const supporterText = supporters.length > 0
+        ? supporters.map(p => p.characterName
+            ? `${p.characterName}(${p.characterClass}) Lv.${p.characterLevel}`
+            : p.userName).join(", ")
+        : "-"
+      return {
+        name: `━━ ${order}수 ━━`,
+        value: `⚔️ 딜러 (${dealers.length}/${dealerSlots}): ${dealerText}\n🛡️ 서포터 (${supporters.length}/${supporterSlots}): ${supporterText}`,
+        inline: false,
+      }
+    })
 
     const embed = {
       title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} ${totalRounds}수 모집`,
