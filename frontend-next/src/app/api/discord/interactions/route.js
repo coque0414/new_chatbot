@@ -260,6 +260,71 @@ export async function POST(request) {
       return Response.json({ type: 1 })
     }
 
+    // ── 자동완성 ───────────────────────────────────────────────────────────
+    if (interaction.type === 4) {
+      await connectDB()
+      const focusedOption = interaction.data.options?.find(o => o.focused)
+      const commandName = interaction.data.name
+      const userId = interaction.member?.user?.id || interaction.user?.id
+
+      // /모집 - 난이도 autocomplete
+      if (commandName === "모집" && focusedOption?.name === "난이도") {
+        const raidOption = interaction.data.options?.find(o => o.name === "레이드")?.value
+        const DIFFICULTY_MAP = {
+          "에키드나":   ["노말", "하드"],
+          "에기르":     ["노말", "하드"],
+          "아브렐슈드": ["노말", "하드", "익스트림 노말", "익스트림 하드", "나이트메어"],
+          "모르둠":     ["노말", "하드"],
+          "아르모체":   ["노말", "하드"],
+          "카제로스":   ["노말", "하드"],
+          "세르카":     ["노말", "하드", "나이트메어"],
+          "지평의성당": ["1단계", "2단계", "3단계"],
+        }
+        const difficulties = DIFFICULTY_MAP[raidOption] || ["노말", "하드"]
+        return Response.json({
+          type: 8,
+          data: { choices: difficulties.map(d => ({ name: d, value: d })) }
+        })
+      }
+
+      // /모집 - 캐릭터1~4 autocomplete / /참가 - 캐릭터 autocomplete
+      if (
+        (commandName === "모집" && focusedOption?.name?.startsWith("캐릭터")) ||
+        (commandName === "참가" && focusedOption?.name === "캐릭터")
+      ) {
+        const userChars = await UserCharacters.findOne({ discordId: userId })
+        if (!userChars) return Response.json({ type: 8, data: { choices: [] } })
+
+        const userCharsObj = userChars.toObject()
+        let allChars = []
+        if (userCharsObj.accounts?.length > 0) {
+          userCharsObj.accounts.forEach(acc =>
+            (acc.characters || []).forEach(c => allChars.push(c))
+          )
+        } else {
+          allChars = userCharsObj.characters || []
+        }
+
+        const query = focusedOption.value?.toLowerCase() || ""
+        const filtered = allChars
+          .filter(c => c.level > 0 && c.name.toLowerCase().includes(query))
+          .sort((a, b) => b.level - a.level)
+          .slice(0, 25)
+
+        return Response.json({
+          type: 8,
+          data: {
+            choices: filtered.map(c => ({
+              name: `${c.name} (${c.class}) Lv.${c.level}`,
+              value: c.name
+            }))
+          }
+        })
+      }
+
+      return Response.json({ type: 8, data: { choices: [] } })
+    }
+
     // ── 버튼 / 셀렉트 메뉴 ────────────────────────────────────────────────
     if (interaction.type === 3) {
       await connectDB()
@@ -1206,6 +1271,81 @@ export async function POST(request) {
       return Response.json({
         type: 4,
         data: { content, flags: 64 }
+      })
+    }
+
+    // ── 슬래시 커맨드 ─────────────────────────────────────────────────────
+    if (interaction.type === 2) {
+      await connectDB()
+      const commandName = interaction.data.name
+      const userId = interaction.member?.user?.id || interaction.user?.id
+      const guildId = interaction.guild_id
+
+      // /지난레이드삭제
+      if (commandName === "지난레이드삭제") {
+        const now = new Date()
+        const memberPermissions = BigInt(interaction.member?.permissions || "0")
+        const isAdmin = (memberPermissions & BigInt(0x8)) === BigInt(0x8)
+
+        const query = {
+          guildId,
+          isMobaChul: false,
+          status: { $nin: ["취소", "출발완료"] },
+        }
+        if (!isAdmin) query.hostId = userId
+
+        const raids = await Raid.find(query)
+        const expiredRaids = raids.filter(r => {
+          if (!r.date || !r.time) return false
+          const raidDateTime = new Date(`${r.date}T${r.time}:00+09:00`)
+          return now > raidDateTime
+        })
+
+        if (expiredRaids.length === 0) {
+          return Response.json({
+            type: 4,
+            data: { content: "❌ 삭제할 지난 레이드가 없습니다.", flags: 64 }
+          })
+        }
+
+        const token = process.env.DISCORD_BOT_TOKEN
+        let deletedCount = 0
+        for (const raid of expiredRaids) {
+          try {
+            if (raid.discordMessageId && raid.discordChannelId) {
+              await fetch(
+                `${DISCORD_API}/channels/${raid.discordChannelId}/messages/${raid.discordMessageId}`,
+                { method: "DELETE", headers: { Authorization: `Bot ${token}` } }
+              )
+            }
+            await Raid.findByIdAndUpdate(raid._id, { status: "취소" })
+            deletedCount++
+          } catch (e) {
+            console.error("레이드 삭제 오류:", e.message)
+          }
+        }
+
+        const scopeText = isAdmin ? "서버 전체" : "내가 주최한"
+        return Response.json({
+          type: 4,
+          data: {
+            content: `✅ ${scopeText} 지난 레이드 ${deletedCount}개를 삭제했습니다.`,
+            flags: 64
+          }
+        })
+      }
+
+      // /모집, /참가 — 미구현
+      if (commandName === "모집" || commandName === "참가") {
+        return Response.json({
+          type: 4,
+          data: { content: "🚧 준비 중입니다.", flags: 64 }
+        })
+      }
+
+      return Response.json({
+        type: 4,
+        data: { content: "❌ 알 수 없는 명령어입니다.", flags: 64 }
       })
     }
 
