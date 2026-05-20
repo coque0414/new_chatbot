@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/mongodb"
 import RaidModel from "@/lib/models/Raid"
+import GuildSettings from "@/lib/models/GuildSettings"
 import { updateDiscordMessage, updateTrainDiscordMessage } from "@/lib/discord"
 import { sendRaidDM, buildLaunchEmbed } from "@/lib/discordDM"
 
@@ -51,26 +52,30 @@ export async function launchRaid(raid) {
   const voiceChannelCreatedAt = new Date()
 
   if (guildId) {
-    try {
-      const vcRes = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
-        method: "POST",
-        headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: raid.isTrain ? `⚔️ ${raid.trainLabel || "기차"}` : `⚔️ ${raid.raidAlias} ${raid.difficulty}`,
-          type: 2, // GUILD_VOICE
-          user_limit: raid.maxPlayers,
-        }),
-      })
+    await connectDB()
+    const guildSettings = await GuildSettings.findOne({ guildId })
+    if (guildSettings?.voiceChannelEnabled !== false) {
+      try {
+        const vcRes = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+          method: "POST",
+          headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: raid.isTrain ? `⚔️ ${raid.trainLabel || "기차"}` : `⚔️ ${raid.raidAlias} ${raid.difficulty}`,
+            type: 2, // GUILD_VOICE
+            user_limit: raid.maxPlayers,
+          }),
+        })
 
-      if (vcRes.ok) {
-        const vcData = await vcRes.json()
-        voiceChannelId = vcData.id
-      } else {
-        const errData = await vcRes.json().catch(() => ({}))
-        console.error("음성채널 생성 실패:", vcRes.status, errData.message || "")
+        if (vcRes.ok) {
+          const vcData = await vcRes.json()
+          voiceChannelId = vcData.id
+        } else {
+          const errData = await vcRes.json().catch(() => ({}))
+          console.error("음성채널 생성 실패:", vcRes.status, errData.message || "")
+        }
+      } catch (e) {
+        console.error("음성채널 생성 오류:", e.message)
       }
-    } catch (e) {
-      console.error("음성채널 생성 오류:", e.message)
     }
   }
 

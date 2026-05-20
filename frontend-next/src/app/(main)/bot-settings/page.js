@@ -184,6 +184,7 @@ export default function BotSettingsPage() {
       announcementChannelName: settings.announcementChannelName || "",
       createChannelId:         settings.createChannelId         || "",
       createChannelName:       settings.createChannelName       || "",
+      voiceChannelEnabled:     settings.voiceChannelEnabled !== false,
     }
   }
 
@@ -213,6 +214,7 @@ export default function BotSettingsPage() {
           announcementChannelName:draft.announcementChannelName || null,
           createChannelId:        draft.createChannelId        || null,
           createChannelName:      draft.createChannelName      || null,
+          voiceChannelEnabled:    draft.voiceChannelEnabled !== false,
         }),
       })
       const data = await res.json()
@@ -494,6 +496,25 @@ export default function BotSettingsPage() {
                                 {svSetup.result.success ? "✅ 안내 메시지가 게시되었습니다." : `❌ ${svSetup.result.error}`}
                               </p>
                             )}
+                          </div>
+
+                          {/* 음성채널 자동 생성 */}
+                          <div className={`flex items-center justify-between px-4 py-3 rounded-xl border
+                            ${d ? "bg-white/[0.02] border-white/10" : "bg-purple-50/30 border-purple-100"}`}>
+                            <div>
+                              <p className={`text-sm font-medium ${d ? "text-gray-200" : "text-gray-700"}`}>🎙️ 음성채널 자동 생성</p>
+                              <p className={`text-xs mt-0.5 ${d ? "text-gray-500" : "text-gray-400"}`}>레이드 시작 시 음성채널을 자동으로 생성합니다</p>
+                            </div>
+                            <button
+                              onClick={() => updateDraft(guild.id, "voiceChannelEnabled", draft.voiceChannelEnabled === false)}
+                              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0
+                                ${draft.voiceChannelEnabled !== false
+                                  ? d ? "bg-amber-500" : "bg-purple-600"
+                                  : d ? "bg-white/20" : "bg-gray-200"
+                                }`}>
+                              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform
+                                ${draft.voiceChannelEnabled !== false ? "translate-x-5" : "translate-x-0"}`} />
+                            </button>
                           </div>
 
                           {/* 저장 결과 */}

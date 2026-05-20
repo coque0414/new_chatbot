@@ -1,5 +1,6 @@
 import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
+import GuildSettings from "@/lib/models/GuildSettings"
 import { sendRaidDM, buildNotifyEmbed } from "@/lib/discordDM"
 
 const DISCORD_API = "https://discord.com/api/v10"
@@ -132,10 +133,15 @@ export async function GET(request) {
     if (!raid.guildId) {
       console.warn(`음성채널 생성 스킵 — guildId 없음 (raid: ${raid._id})`)
     } else {
-      try {
-        voiceChannelId = await createVoiceChannel(vcName, raid.guildId)
-      } catch (e) {
-        console.error(`음성채널 생성 실패 (${raid._id}):`, e.message)
+      const guildSettings = await GuildSettings.findOne({ guildId: raid.guildId })
+      if (guildSettings?.voiceChannelEnabled === false) {
+        // 음성채널 생성 스킵
+      } else {
+        try {
+          voiceChannelId = await createVoiceChannel(vcName, raid.guildId)
+        } catch (e) {
+          console.error(`음성채널 생성 실패 (${raid._id}):`, e.message)
+        }
       }
     }
 

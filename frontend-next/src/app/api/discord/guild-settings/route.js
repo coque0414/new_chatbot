@@ -35,6 +35,7 @@ export async function GET(request) {
       announcementChannelName: null,
       createChannelId: null,
       createChannelName: null,
+      voiceChannelEnabled: true,
     }
   })
 }
@@ -48,6 +49,7 @@ export async function POST(request) {
     guildId, guildName, guildIcon,
     announcementChannelId, announcementChannelName,
     createChannelId, createChannelName,
+    voiceChannelEnabled,
   } = body
 
   if (!guildId) return Response.json({ error: "guildId 필요" }, { status: 400 })
@@ -68,6 +70,7 @@ export async function POST(request) {
       ...(announcementChannelName !== undefined && { announcementChannelName }),
       ...(createChannelId !== undefined && { createChannelId }),
       ...(createChannelName !== undefined && { createChannelName }),
+      ...(voiceChannelEnabled !== undefined && { voiceChannelEnabled }),
     },
     { upsert: true, new: true }
   )

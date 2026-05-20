@@ -8,6 +8,7 @@ const GuildSettingsSchema = new mongoose.Schema({
   announcementChannelName:  { type: String, default: null },
   createChannelId:          { type: String, default: null },   // 레이드 생성 채널
   createChannelName:        { type: String, default: null },
+  voiceChannelEnabled:      { type: Boolean, default: true },
 }, { timestamps: true })
 
 export default mongoose.models.GuildSettings || mongoose.model("GuildSettings", GuildSettingsSchema)
