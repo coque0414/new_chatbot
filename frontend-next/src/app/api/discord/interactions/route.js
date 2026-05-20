@@ -1335,11 +1335,121 @@ export async function POST(request) {
         })
       }
 
-      // /모집, /참가 — 미구현
-      if (commandName === "모집" || commandName === "참가") {
+      // /모집 — 미구현
+      if (commandName === "모집") {
         return Response.json({
           type: 4,
           data: { content: "🚧 준비 중입니다.", flags: 64 }
+        })
+      }
+
+      // /참가
+      if (commandName === "참가") {
+        const options = interaction.data.options || []
+        const raidId = options.find(o => o.name === "레이드id")?.value?.trim()
+        const characterName = options.find(o => o.name === "캐릭터")?.value?.trim()
+        const userName = interaction.member?.user?.username || interaction.user?.username
+
+        const raid = await Raid.findById(raidId).catch(() => null)
+        if (!raid) {
+          return Response.json({ type: 4, data: { content: "❌ 레이드를 찾을 수 없습니다. ID를 다시 확인해주세요.", flags: 64 } })
+        }
+        if (raid.status !== "모집중") {
+          return Response.json({ type: 4, data: { content: "❌ 모집이 마감된 레이드입니다.", flags: 64 } })
+        }
+        if (isExpired(raid)) {
+          return Response.json({ type: 4, data: { content: "❌ 이미 기한이 지난 레이드입니다.", flags: 64 } })
+        }
+
+        const userChars = await UserCharacters.findOne({ discordId: userId })
+        if (!userChars) {
+          return Response.json({ type: 4, data: { content: "❌ 캐릭터 연동이 필요합니다. 디스코드 봇에서 캐릭터 인증 후 다시 시도해주세요.", flags: 64 } })
+        }
+
+        const userCharsObj = userChars.toObject()
+        let allChars = []
+        if (userCharsObj.accounts?.length > 0) {
+          userCharsObj.accounts.forEach(acc =>
+            (acc.characters || []).forEach(c => allChars.push(c))
+          )
+        } else {
+          allChars = userCharsObj.characters || []
+        }
+        const char = allChars.find(c => c.name === characterName)
+        if (!char) {
+          return Response.json({ type: 4, data: { content: "❌ 선택한 캐릭터를 찾을 수 없습니다.", flags: 64 } })
+        }
+
+        if (raid.totalRounds >= 2) {
+          return Response.json({ type: 4, data: { content: "❌ N수 레이드는 Discord 메시지의 '레이드 참가' 버튼을 이용해주세요.", flags: 64 } })
+        }
+
+        if (raid.participants.some(p => p.userId === userId)) {
+          return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
+        }
+
+        const role = SUPPORTER_CLASSES.includes(char.class) ? "support" : "dealer"
+        const supporterSlots = raid.maxPlayers / 4
+        const dealerSlots = raid.maxPlayers - supporterSlots
+        const currentDealers = raid.participants.filter(p => p.role === "dealer")
+        const currentSupporters = raid.participants.filter(p => p.role === "support")
+
+        if (role === "dealer" && currentDealers.length >= dealerSlots) {
+          return Response.json({ type: 4, data: { content: "❌ 딜러 자리가 꽉 찼습니다.", flags: 64 } })
+        }
+        if (role === "support" && currentSupporters.length >= supporterSlots) {
+          return Response.json({ type: 4, data: { content: "❌ 서포터 자리가 꽉 찼습니다.", flags: 64 } })
+        }
+
+        const minLevel = getMinLevel(raid.raidAlias, raid.difficulty) || getMinLevel(raid.raidName, raid.difficulty) || 0
+        if (minLevel > 0 && char.level < minLevel) {
+          return Response.json({ type: 4, data: { content: `❌ 캐릭터 레벨이 부족합니다. (필요: ${minLevel}+, 현재: ${char.level})`, flags: 64 } })
+        }
+
+        if (role === "dealer" && raid.maxPlayers === 4) {
+          const existingClasses = new Set(currentDealers.map(p => p.characterClass).filter(Boolean))
+          if (existingClasses.has(char.class)) {
+            return Response.json({ type: 4, data: { content: "❌ 이미 같은 직업의 딜러가 있습니다. (4인 레이드는 직업 중복 불가)", flags: 64 } })
+          }
+        }
+        if (role === "dealer" && raid.maxPlayers === 8) {
+          const classCount = {}
+          for (const p of currentDealers) {
+            if (p.characterClass) classCount[p.characterClass] = (classCount[p.characterClass] || 0) + 1
+          }
+          if ((classCount[char.class] || 0) >= 2) {
+            return Response.json({ type: 4, data: { content: "❌ 같은 직업은 최대 2명까지 참가 가능합니다.", flags: 64 } })
+          }
+        }
+
+        const userImage = interaction.member?.user?.avatar
+          ? `https://cdn.discordapp.com/avatars/${userId}/${interaction.member.user.avatar}.png`
+          : null
+
+        raid.participants.push({
+          userId, userName, userImage,
+          role,
+          characterName: char.name,
+          characterClass: char.class,
+          characterLevel: char.level,
+          characterCombatPower: char.combatPower || null,
+        })
+
+        const totalFilled = raid.participants.length
+        if (totalFilled >= raid.maxPlayers && raid.status === "모집중") {
+          raid.status = "모집완료"
+        }
+        await raid.save()
+
+        updateMessage(raid).catch(e => console.error("Discord 메시지 업데이트 실패:", e.message))
+
+        const roleText = role === "dealer" ? "⚔️ 딜러" : "🛡️ 서포터"
+        return Response.json({
+          type: 4,
+          data: {
+            content: `✅ **${userName}**님이 ${roleText}로 참가했습니다!\n캐릭터: ${char.class} ${char.name} (Lv.${char.level})`,
+            flags: 64
+          }
         })
       }
 
