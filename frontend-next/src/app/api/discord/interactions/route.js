@@ -290,11 +290,11 @@ export async function POST(request) {
         })
       }
 
-      // /모집, /모바출모집 캐릭터1~4 / /참가 캐릭터~캐릭터4 / /같이참가 내캐릭터
+      // /모집, /모바출모집 캐릭터1~4 / /참가 캐릭터~캐릭터4 / /같이참가 내캐릭터1~4
       if (
         ((commandName === "모집" || commandName === "모바출모집") && focusedOption?.name?.startsWith("캐릭터")) ||
         (commandName === "참가" && (focusedOption?.name === "캐릭터" || focusedOption?.name?.startsWith("캐릭터"))) ||
-        (commandName === "같이참가" && focusedOption?.name === "내캐릭터")
+        (commandName === "같이참가" && focusedOption?.name?.startsWith("내캐릭터"))
       ) {
         const userChars = await UserCharacters.findOne({ discordId: userId })
         if (!userChars) return Response.json({ type: 8, data: { choices: [] } })
@@ -1757,18 +1757,49 @@ export async function POST(request) {
       if (commandName === "같이참가") {
         const options = interaction.data.options || []
         const raidId = options.find(o => o.name === "레이드id")?.value?.trim()
-        const myCharName = options.find(o => o.name === "내캐릭터")?.value?.trim()
         const targetUserId = options.find(o => o.name === "같이참가유저")?.value
-        const targetCharName = options.find(o => o.name === "유저캐릭터")?.value?.trim()
         const userName = interaction.member?.user?.username || interaction.user?.username
+
+        const myChars = [
+          options.find(o => o.name === "내캐릭터1")?.value?.trim(),
+          options.find(o => o.name === "내캐릭터2")?.value?.trim() || null,
+          options.find(o => o.name === "내캐릭터3")?.value?.trim() || null,
+          options.find(o => o.name === "내캐릭터4")?.value?.trim() || null,
+        ].filter(Boolean)
+        const targetChars = [
+          options.find(o => o.name === "유저캐릭터1")?.value?.trim(),
+          options.find(o => o.name === "유저캐릭터2")?.value?.trim() || null,
+          options.find(o => o.name === "유저캐릭터3")?.value?.trim() || null,
+          options.find(o => o.name === "유저캐릭터4")?.value?.trim() || null,
+        ].filter(Boolean)
 
         const raid = await Raid.findById(raidId).catch(() => null)
         if (!raid) return Response.json({ type: 4, data: { content: "❌ 레이드를 찾을 수 없습니다.", flags: 64 } })
         if (raid.status !== "모집중") return Response.json({ type: 4, data: { content: "❌ 모집이 마감된 레이드입니다.", flags: 64 } })
         if (isExpired(raid)) return Response.json({ type: 4, data: { content: "❌ 기한이 지난 레이드입니다.", flags: 64 } })
         if (raid.guildId && raid.guildId !== guildId) return Response.json({ type: 4, data: { content: "❌ 다른 서버의 레이드입니다.", flags: 64 } })
-        if (raid.totalRounds >= 2) return Response.json({ type: 4, data: { content: "❌ N수 레이드는 /참가 명령어를 이용해주세요.", flags: 64 } })
 
+        const minLevel = getMinLevel(raid.raidAlias, raid.difficulty) || getMinLevel(raid.raidName, raid.difficulty) || 0
+        const supporterSlots = raid.maxPlayers / 4
+        const dealerSlots = raid.maxPlayers - supporterSlots
+
+        // 캐릭터 쌍 수 vs totalRounds 처리
+        let warningMsg = ""
+        const pairCount = Math.min(myChars.length, targetChars.length)
+
+        let finalPairCount
+        if (raid.totalRounds <= 1) {
+          finalPairCount = 1
+        } else {
+          if (pairCount < raid.totalRounds) {
+            warningMsg = `\n⚠️ ${raid.totalRounds}수 레이드인데 캐릭터 쌍이 ${pairCount}개만 입력됐습니다. 나머지 ${raid.totalRounds - pairCount}개 슬롯은 비워두고 등록했습니다.`
+          } else if (pairCount > raid.totalRounds) {
+            warningMsg = `\n⚠️ ${raid.totalRounds}수보다 많은 캐릭터가 입력되어 초과된 캐릭터를 제외하고 등록했습니다.`
+          }
+          finalPairCount = Math.min(pairCount, raid.totalRounds)
+        }
+
+        // 내 캐릭터 조회
         const myUserChars = await UserCharacters.findOne({ discordId: userId })
         if (!myUserChars) return Response.json({ type: 4, data: { content: "❌ 캐릭터 연동이 필요합니다.", flags: 64 } })
         const myCharsObj = myUserChars.toObject()
@@ -1778,102 +1809,175 @@ export async function POST(request) {
         } else {
           myAllChars = myCharsObj.characters || []
         }
-        const myChar = myAllChars.find(c => c.name === myCharName)
-        if (!myChar) return Response.json({ type: 4, data: { content: `❌ 내 캐릭터 "${myCharName}"를 찾을 수 없습니다.`, flags: 64 } })
 
+        // 대상 유저 캐릭터 조회
         const targetUserChars = await UserCharacters.findOne({ discordId: targetUserId })
-        let targetChar = null
+        let targetAllChars = []
         if (targetUserChars) {
           const targetCharsObj = targetUserChars.toObject()
-          let targetAllChars = []
           if (targetCharsObj.accounts?.length > 0) {
             targetCharsObj.accounts.forEach(acc => (acc.characters || []).forEach(c => targetAllChars.push(c)))
           } else {
             targetAllChars = targetCharsObj.characters || []
           }
-          targetChar = targetAllChars.find(c => c.name === targetCharName)
-        }
-        if (!targetChar) {
-          targetChar = { name: targetCharName, class: null, level: null, combatPower: null }
-        }
-
-        if (raid.participants.some(p => p.userId === userId)) {
-          return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
-        }
-        if (raid.participants.some(p => p.userId === targetUserId)) {
-          return Response.json({ type: 4, data: { content: "❌ 대상 유저가 이미 참가 신청한 레이드입니다.", flags: 64 } })
-        }
-
-        const supporterSlots = raid.maxPlayers / 4
-        const dealerSlots = raid.maxPlayers - supporterSlots
-        const minLevel = getMinLevel(raid.raidAlias, raid.difficulty) || getMinLevel(raid.raidName, raid.difficulty) || 0
-
-        const myRole = SUPPORTER_CLASSES.includes(myChar.class) ? "support" : "dealer"
-        const targetRole = targetChar.class
-          ? (SUPPORTER_CLASSES.includes(targetChar.class) ? "support" : "dealer")
-          : "dealer"
-
-        if (minLevel && myChar.level < minLevel) {
-          return Response.json({
-            type: 4,
-            data: { content: `❌ 내 캐릭터 레벨이 부족합니다. (필요: ${minLevel}+, 현재: ${myChar.level})`, flags: 64 }
-          })
-        }
-
-        const dealers = raid.participants.filter(p => p.role === "dealer")
-        const supporters = raid.participants.filter(p => p.role === "support")
-        const dealerAdd = (myRole === "dealer" ? 1 : 0) + (targetRole === "dealer" ? 1 : 0)
-        const supporterAdd = (myRole === "support" ? 1 : 0) + (targetRole === "support" ? 1 : 0)
-
-        if (dealers.length + dealerAdd > dealerSlots) {
-          return Response.json({ type: 4, data: { content: "❌ 딜러 자리가 부족합니다.", flags: 64 } })
-        }
-        if (supporters.length + supporterAdd > supporterSlots) {
-          return Response.json({ type: 4, data: { content: "❌ 서포터 자리가 부족합니다.", flags: 64 } })
         }
 
         const userImage = interaction.member?.user?.avatar
           ? `https://cdn.discordapp.com/avatars/${userId}/${interaction.member.user.avatar}.png`
           : null
 
-        raid.participants.push({
-          userId, userName, userImage,
-          role: myRole,
-          characterName: myChar.name,
-          characterClass: myChar.class,
-          characterLevel: myChar.level,
-          characterCombatPower: myChar.combatPower || null,
-        })
-        raid.participants.push({
-          userId: targetUserId,
-          userName: targetCharName,
-          userImage: null,
-          role: targetRole,
-          characterName: targetChar.name,
-          characterClass: targetChar.class,
-          characterLevel: targetChar.level,
-          characterCombatPower: targetChar.combatPower || null,
-        })
+        // ── 단일 레이드 (totalRounds <= 1) ──────────────────────────────────
+        if (raid.totalRounds <= 1) {
+          if (raid.participants.some(p => p.userId === userId || p.userId === targetUserId)) {
+            return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
+          }
 
-        const newDealers = raid.participants.filter(p => p.role === "dealer")
-        const newSupporters = raid.participants.filter(p => p.role === "support")
-        const isFull = newDealers.length >= dealerSlots && newSupporters.length >= supporterSlots
+          const myChar = myAllChars.find(c => c.name === myChars[0])
+          if (!myChar) return Response.json({ type: 4, data: { content: `❌ 내 캐릭터 "${myChars[0]}"를 찾을 수 없습니다.`, flags: 64 } })
 
-        if (isFull && raid.isMobaChul) {
-          await raid.save()
-          await launchRaid(raid)
-        } else {
+          let targetChar = targetAllChars.find(c => c.name === targetChars[0])
+          if (!targetChar) targetChar = { name: targetChars[0], class: null, level: null, combatPower: null }
+
+          if (minLevel && myChar.level < minLevel) {
+            return Response.json({
+              type: 4,
+              data: { content: `❌ 내 캐릭터 레벨이 부족합니다. (필요: ${minLevel}+, 현재: ${myChar.level})`, flags: 64 }
+            })
+          }
+
+          const myRole = SUPPORTER_CLASSES.includes(myChar.class) ? "support" : "dealer"
+          const targetRole = targetChar.class
+            ? (SUPPORTER_CLASSES.includes(targetChar.class) ? "support" : "dealer")
+            : "dealer"
+
+          const dealers = raid.participants.filter(p => p.role === "dealer")
+          const supporters = raid.participants.filter(p => p.role === "support")
+          const dealerAdd = (myRole === "dealer" ? 1 : 0) + (targetRole === "dealer" ? 1 : 0)
+          const supporterAdd = (myRole === "support" ? 1 : 0) + (targetRole === "support" ? 1 : 0)
+
+          if (dealers.length + dealerAdd > dealerSlots) {
+            return Response.json({ type: 4, data: { content: "❌ 딜러 자리가 부족합니다.", flags: 64 } })
+          }
+          if (supporters.length + supporterAdd > supporterSlots) {
+            return Response.json({ type: 4, data: { content: "❌ 서포터 자리가 부족합니다.", flags: 64 } })
+          }
+
+          raid.participants.push({
+            userId, userName, userImage,
+            role: myRole,
+            characterName: myChar.name,
+            characterClass: myChar.class,
+            characterLevel: myChar.level,
+            characterCombatPower: myChar.combatPower || null,
+          })
+          raid.participants.push({
+            userId: targetUserId,
+            userName: targetChars[0],
+            userImage: null,
+            role: targetRole,
+            characterName: targetChar.name,
+            characterClass: targetChar.class,
+            characterLevel: targetChar.level,
+            characterCombatPower: targetChar.combatPower || null,
+          })
+
+          const newDealers = raid.participants.filter(p => p.role === "dealer")
+          const newSupporters = raid.participants.filter(p => p.role === "support")
+          const isFull = newDealers.length >= dealerSlots && newSupporters.length >= supporterSlots
+
+          if (isFull && raid.isMobaChul) {
+            await raid.save()
+            await launchRaid(raid)
+            return Response.json({
+              type: 4,
+              data: { content: `✅ **${userName}**님과 <@${targetUserId}>님이 함께 참가했습니다! 🚀 출발!${warningMsg}` }
+            })
+          }
           if (isFull) raid.status = "모집완료"
           await raid.save()
           updateMessage(raid).catch(e => console.error("같이참가 Discord 업데이트 실패:", e))
+
+          return Response.json({
+            type: 4,
+            data: {
+              content: `✅ **${userName}**님과 <@${targetUserId}>님이 함께 참가했습니다!\n${userName}: ${myChar.name}\n<@${targetUserId}>: ${targetChar.name}${warningMsg}`
+            }
+          })
         }
 
-        const myRoleText = myRole === "dealer" ? "⚔️ 딜러" : "🛡️ 서포터"
-        const targetRoleText = targetRole === "dealer" ? "⚔️ 딜러" : "🛡️ 서포터"
+        // ── N수 레이드 (totalRounds >= 2) ───────────────────────────────────
+        if (raid.rounds.some(r => r.participants.some(p => p.userId === userId || p.userId === targetUserId))) {
+          return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
+        }
+
+        for (let i = 0; i < finalPairCount; i++) {
+          const round = raid.rounds.find(r => r.order === i + 1)
+          if (!round) continue
+
+          const myChar = myAllChars.find(c => c.name === myChars[i])
+          if (!myChar) {
+            return Response.json({
+              type: 4,
+              data: { content: `❌ 내 ${i + 1}수 캐릭터 "${myChars[i]}"를 찾을 수 없습니다.`, flags: 64 }
+            })
+          }
+
+          let targetChar = targetAllChars.find(c => c.name === targetChars[i])
+          if (!targetChar) targetChar = { name: targetChars[i], class: null, level: null, combatPower: null }
+
+          const myRole = SUPPORTER_CLASSES.includes(myChar.class) ? "support" : "dealer"
+          const targetRole = targetChar.class
+            ? (SUPPORTER_CLASSES.includes(targetChar.class) ? "support" : "dealer")
+            : "dealer"
+
+          const roundDealers = round.participants.filter(p => p.role === "dealer")
+          const roundSupporters = round.participants.filter(p => p.role === "support")
+          const dealerAdd = (myRole === "dealer" ? 1 : 0) + (targetRole === "dealer" ? 1 : 0)
+          const supporterAdd = (myRole === "support" ? 1 : 0) + (targetRole === "support" ? 1 : 0)
+
+          if (roundDealers.length + dealerAdd > dealerSlots) {
+            return Response.json({ type: 4, data: { content: `❌ ${i + 1}수 딜러 자리가 부족합니다.`, flags: 64 } })
+          }
+          if (roundSupporters.length + supporterAdd > supporterSlots) {
+            return Response.json({ type: 4, data: { content: `❌ ${i + 1}수 서포터 자리가 부족합니다.`, flags: 64 } })
+          }
+
+          round.participants.push({
+            userId, userName, userImage,
+            role: myRole,
+            characterName: myChar.name,
+            characterClass: myChar.class,
+            characterLevel: myChar.level,
+            characterCombatPower: myChar.combatPower || null,
+          })
+          round.participants.push({
+            userId: targetUserId,
+            userName: targetChars[i],
+            userImage: null,
+            role: targetRole,
+            characterName: targetChar.name,
+            characterClass: targetChar.class,
+            characterLevel: targetChar.level,
+            characterCombatPower: targetChar.combatPower || null,
+          })
+        }
+
+        const allFull = raid.rounds.every(r => {
+          const d = r.participants.filter(p => p.role === "dealer").length
+          const s = r.participants.filter(p => p.role === "support").length
+          return d >= dealerSlots && s >= supporterSlots
+        })
+        if (allFull) raid.status = "모집완료"
+        raid.markModified("rounds")
+        await raid.save()
+        updateMessage(raid).catch(e => console.error("같이참가 Discord 업데이트 실패:", e))
+
+        const charSummary = myChars.slice(0, finalPairCount).join(", ")
+        const targetSummary = targetChars.slice(0, finalPairCount).join(", ")
         return Response.json({
           type: 4,
           data: {
-            content: `✅ **${userName}**님과 <@${targetUserId}>님이 함께 참가했습니다!\n${userName}: ${myRoleText} ${myChar.class} ${myChar.name} (Lv.${myChar.level})\n<@${targetUserId}>: ${targetRoleText} ${targetChar.name}`
+            content: `✅ **${userName}**님과 <@${targetUserId}>님이 함께 참가했습니다!\n${userName}: ${charSummary}\n<@${targetUserId}>: ${targetSummary}${warningMsg}`
           }
         })
       }
