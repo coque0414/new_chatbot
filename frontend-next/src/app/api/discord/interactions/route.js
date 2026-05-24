@@ -1380,6 +1380,10 @@ export async function POST(request) {
           if (!/^\d{2}:\d{2}$/.test(timeInput)) {
             return Response.json({ type: 4, data: { content: "❌ 시간 형식이 올바르지 않습니다. (예: 21:00)", flags: 64 } })
           }
+          const raidDateTime = new Date(`${dateInput}T${timeInput}:00+09:00`)
+          if (raidDateTime <= new Date()) {
+            return Response.json({ type: 4, data: { content: "❌ 과거 날짜/시간으로는 모집을 생성할 수 없습니다.", flags: 64 } })
+          }
         }
 
         const settings = await GuildSettings.findOne({ guildId })
@@ -1522,6 +1526,9 @@ export async function POST(request) {
         }
         if (isExpired(raid)) {
           return Response.json({ type: 4, data: { content: "❌ 이미 기한이 지난 레이드입니다.", flags: 64 } })
+        }
+        if (raid.guildId && raid.guildId !== guildId) {
+          return Response.json({ type: 4, data: { content: "❌ 다른 서버의 레이드에는 참가할 수 없습니다.", flags: 64 } })
         }
 
         const userChars = await UserCharacters.findOne({ discordId: userId })
