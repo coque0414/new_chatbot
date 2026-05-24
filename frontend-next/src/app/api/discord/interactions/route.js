@@ -267,8 +267,11 @@ export async function POST(request) {
       const commandName = interaction.data.name
       const userId = interaction.member?.user?.id || interaction.user?.id
 
-      // /모집 - 난이도 autocomplete
-      if (commandName === "모집" && focusedOption?.name === "난이도") {
+      // /모집, /모바출모집 - 난이도 autocomplete
+      if (
+        (commandName === "모집" || commandName === "모바출모집") &&
+        focusedOption?.name === "난이도"
+      ) {
         const raidOption = interaction.data.options?.find(o => o.name === "레이드")?.value
         const DIFFICULTY_MAP = {
           "에키드나":   ["노말", "하드"],
@@ -287,10 +290,11 @@ export async function POST(request) {
         })
       }
 
-      // /모집 - 캐릭터1~4 autocomplete / /참가 - 캐릭터 autocomplete
+      // /모집, /모바출모집 캐릭터1~4 / /참가 캐릭터~캐릭터4 / /같이참가 내캐릭터
       if (
-        (commandName === "모집" && focusedOption?.name?.startsWith("캐릭터")) ||
-        (commandName === "참가" && focusedOption?.name === "캐릭터")
+        ((commandName === "모집" || commandName === "모바출모집") && focusedOption?.name?.startsWith("캐릭터")) ||
+        (commandName === "참가" && (focusedOption?.name === "캐릭터" || focusedOption?.name?.startsWith("캐릭터"))) ||
+        (commandName === "같이참가" && focusedOption?.name === "내캐릭터")
       ) {
         const userChars = await UserCharacters.findOne({ discordId: userId })
         if (!userChars) return Response.json({ type: 8, data: { choices: [] } })
@@ -1336,14 +1340,11 @@ export async function POST(request) {
       }
 
       // /모집
-      if (commandName === "모집") {
+      if (commandName === "모집" || commandName === "모바출모집") {
         const options = interaction.data.options || []
         const raidAlias       = options.find(o => o.name === "레이드")?.value
         const difficulty      = options.find(o => o.name === "난이도")?.value
         const difficultyLevel = options.find(o => o.name === "숙련도")?.value
-        const isMobaChulStr   = options.find(o => o.name === "모바출")?.value
-        const dateInput       = (options.find(o => o.name === "날짜")?.value || "").trim()
-        const timeInput       = (options.find(o => o.name === "시간")?.value || "").trim()
         const totalRounds     = options.find(o => o.name === "n수")?.value || 1
         const char1 = options.find(o => o.name === "캐릭터1")?.value?.trim() || null
         const char2 = options.find(o => o.name === "캐릭터2")?.value?.trim() || null
@@ -1351,7 +1352,9 @@ export async function POST(request) {
         const char4 = options.find(o => o.name === "캐릭터4")?.value?.trim() || null
         const userName = interaction.member?.user?.username || interaction.user?.username
 
-        const isMobaChul = isMobaChulStr === "예"
+        const isMobaChul = commandName === "모바출모집"
+        const dateInput = isMobaChul ? "" : (options.find(o => o.name === "날짜")?.value || "").trim()
+        const timeInput = isMobaChul ? "" : (options.find(o => o.name === "시간")?.value || "").trim()
 
         const ALIAS_TO_KEY = {
           "에키드나":   "ekidna",
@@ -1402,10 +1405,18 @@ export async function POST(request) {
           return Response.json({ type: 4, data: { content: "❌ 이번 주 레이드 공고 횟수(20회)를 초과했습니다.", flags: 64 } })
         }
 
-        const charNames = [char1, char2, char3, char4].filter(Boolean)
-        let hostCharacters = []
+        const charInputs = [char1, char2, char3, char4].filter(Boolean)
+        let warningMsg = ""
 
-        if (charNames.length > 0) {
+        if (charInputs.length > totalRounds) {
+          charInputs.splice(totalRounds)
+          warningMsg = `\n⚠️ ${totalRounds}수보다 많은 캐릭터가 입력되어 초과된 캐릭터를 제외하고 모집 등록했습니다.`
+        } else if (charInputs.length > 0 && charInputs.length < totalRounds) {
+          warningMsg = `\n⚠️ ${totalRounds}수 레이드인데 캐릭터가 ${charInputs.length}개만 입력됐습니다. 나머지 ${totalRounds - charInputs.length}개 슬롯은 비워두고 모집을 생성했습니다.`
+        }
+
+        let hostCharacters = []
+        if (charInputs.length > 0) {
           const userChars = await UserCharacters.findOne({ discordId: userId })
           if (userChars) {
             const userCharsObj = userChars.toObject()
@@ -1417,7 +1428,7 @@ export async function POST(request) {
             } else {
               allChars = userCharsObj.characters || []
             }
-            hostCharacters = charNames.map(name => allChars.find(c => c.name === name)).filter(Boolean)
+            hostCharacters = charInputs.map(name => allChars.find(c => c.name === name)).filter(Boolean)
           }
         }
 
@@ -1457,8 +1468,8 @@ export async function POST(request) {
           raidTag: raidInfo.raidTag,
           difficulty,
           maxPlayers: raidInfo.maxPlayers,
-          date: isMobaChul ? "" : dateInput,
-          time: isMobaChul ? "" : timeInput,
+          date: dateInput,
+          time: timeInput,
           isMobaChul,
           difficulty_level: difficultyLevel || null,
           discordChannelId: settings.announcementChannelId,
@@ -1485,8 +1496,8 @@ export async function POST(request) {
               raidAlias: raidInfo.raidAlias,
               difficulty,
               maxPlayers: raidInfo.maxPlayers,
-              date: isMobaChul ? "" : dateInput,
-              time: isMobaChul ? "" : timeInput,
+              date: dateInput,
+              time: timeInput,
               isMobaChul,
               totalRounds,
               difficulty_level: difficultyLevel || null,
@@ -1498,13 +1509,13 @@ export async function POST(request) {
           )
           await Raid.findByIdAndUpdate(raid._id, { discordMessageId: msgId })
         } catch (e) {
-          console.error("/모집 공고 메시지 전송 실패:", e.message)
+          console.error(`/${commandName} 공고 메시지 전송 실패:`, e.message)
         }
 
         return Response.json({
           type: 4,
           data: {
-            content: `✅ **${raidInfo.raidAlias} ${difficulty} (${difficultyLevel})** 모집이 생성되었습니다!\n<#${settings.announcementChannelId}>를 확인해주세요.`,
+            content: `✅ **${raidInfo.raidAlias} ${difficulty} (${difficultyLevel})** 모집이 생성되었습니다!\n<#${settings.announcementChannelId}>를 확인해주세요.${warningMsg}`,
             flags: 64
           }
         })
@@ -1515,6 +1526,9 @@ export async function POST(request) {
         const options = interaction.data.options || []
         const raidId = options.find(o => o.name === "레이드id")?.value?.trim()
         const characterName = options.find(o => o.name === "캐릭터")?.value?.trim()
+        const char2 = options.find(o => o.name === "캐릭터2")?.value?.trim() || null
+        const char3 = options.find(o => o.name === "캐릭터3")?.value?.trim() || null
+        const char4 = options.find(o => o.name === "캐릭터4")?.value?.trim() || null
         const userName = interaction.member?.user?.username || interaction.user?.username
 
         const raid = await Raid.findById(raidId).catch(() => null)
@@ -1531,6 +1545,126 @@ export async function POST(request) {
           return Response.json({ type: 4, data: { content: "❌ 다른 서버의 레이드에는 참가할 수 없습니다.", flags: 64 } })
         }
 
+        // ── N수 레이드 분기 ──────────────────────────────────────────────────
+        if (raid.totalRounds >= 2) {
+          const nsuChars = [characterName, char2, char3, char4].filter(Boolean)
+
+          if (nsuChars.length < raid.totalRounds) {
+            return Response.json({
+              type: 4,
+              data: {
+                content: `❌ ${raid.totalRounds}수 레이드입니다. 캐릭터를 ${raid.totalRounds}개 입력해주세요.\n(캐릭터~캐릭터${raid.totalRounds} 파라미터 사용)`,
+                flags: 64
+              }
+            })
+          }
+
+          const finalChars = nsuChars.slice(0, raid.totalRounds)
+
+          if (new Set(finalChars).size !== finalChars.length) {
+            return Response.json({
+              type: 4,
+              data: { content: "❌ 같은 캐릭터를 여러 수에 배치할 수 없습니다.", flags: 64 }
+            })
+          }
+
+          const alreadyIn = raid.rounds.some(r =>
+            r.participants.some(p => p.userId === userId)
+          )
+          if (alreadyIn) {
+            return Response.json({
+              type: 4,
+              data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 }
+            })
+          }
+
+          const userCharsNsu = await UserCharacters.findOne({ discordId: userId })
+          if (!userCharsNsu) {
+            return Response.json({
+              type: 4,
+              data: { content: "❌ 캐릭터 연동이 필요합니다.", flags: 64 }
+            })
+          }
+          const nsuCharsObj = userCharsNsu.toObject()
+          let allNsuChars = []
+          if (nsuCharsObj.accounts?.length > 0) {
+            nsuCharsObj.accounts.forEach(acc =>
+              (acc.characters || []).forEach(c => allNsuChars.push(c))
+            )
+          } else {
+            allNsuChars = nsuCharsObj.characters || []
+          }
+
+          const supporterSlots = raid.maxPlayers / 4
+          const dealerSlots = raid.maxPlayers - supporterSlots
+          const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
+            || getMinLevel(raid.raidName, raid.difficulty) || 0
+
+          for (let i = 0; i < finalChars.length; i++) {
+            const charName = finalChars[i]
+            const char = allNsuChars.find(c => c.name === charName)
+            if (!char) {
+              return Response.json({
+                type: 4,
+                data: { content: `❌ ${i + 1}수 캐릭터 "${charName}"를 찾을 수 없습니다.`, flags: 64 }
+              })
+            }
+            if (minLevel && char.level < minLevel) {
+              return Response.json({
+                type: 4,
+                data: { content: `❌ ${i + 1}수 캐릭터 레벨이 부족합니다. (필요: ${minLevel}+, 현재: ${char.level})`, flags: 64 }
+              })
+            }
+            const role = SUPPORTER_CLASSES.includes(char.class) ? "support" : "dealer"
+            const round = raid.rounds.find(r => r.order === i + 1)
+            if (!round) continue
+
+            const roundDealers = round.participants.filter(p => p.role === "dealer")
+            const roundSupporters = round.participants.filter(p => p.role === "support")
+            if (role === "dealer" && roundDealers.length >= dealerSlots) {
+              return Response.json({
+                type: 4,
+                data: { content: `❌ ${i + 1}수 딜러 자리가 꽉 찼습니다.`, flags: 64 }
+              })
+            }
+            if (role === "support" && roundSupporters.length >= supporterSlots) {
+              return Response.json({
+                type: 4,
+                data: { content: `❌ ${i + 1}수 서포터 자리가 꽉 찼습니다.`, flags: 64 }
+              })
+            }
+            const nsuUserImage = interaction.member?.user?.avatar
+              ? `https://cdn.discordapp.com/avatars/${userId}/${interaction.member.user.avatar}.png`
+              : null
+            round.participants.push({
+              userId, userName, userImage: nsuUserImage,
+              role,
+              characterName: char.name,
+              characterClass: char.class,
+              characterLevel: char.level,
+              characterCombatPower: char.combatPower || null,
+            })
+          }
+
+          const allFull = raid.rounds.every(r => {
+            const d = r.participants.filter(p => p.role === "dealer").length
+            const s = r.participants.filter(p => p.role === "support").length
+            return d >= dealerSlots && s >= supporterSlots
+          })
+          if (allFull) raid.status = "모집완료"
+          raid.markModified("rounds")
+          await raid.save()
+          updateMessage(raid).catch(e => console.error("N수 참가 Discord 업데이트 실패:", e))
+          return Response.json({
+            type: 4,
+            data: {
+              content: `✅ **${userName}**님이 ${raid.totalRounds}수 레이드에 참가했습니다!\n캐릭터: ${finalChars.join(", ")}`,
+              flags: 64
+            }
+          })
+        }
+
+        // ── 단일 레이드 분기 ─────────────────────────────────────────────────
         const userChars = await UserCharacters.findOne({ discordId: userId })
         if (!userChars) {
           return Response.json({ type: 4, data: { content: "❌ 캐릭터 연동이 필요합니다. 디스코드 봇에서 캐릭터 인증 후 다시 시도해주세요.", flags: 64 } })
@@ -1548,10 +1682,6 @@ export async function POST(request) {
         const char = allChars.find(c => c.name === characterName)
         if (!char) {
           return Response.json({ type: 4, data: { content: "❌ 선택한 캐릭터를 찾을 수 없습니다.", flags: 64 } })
-        }
-
-        if (raid.totalRounds >= 2) {
-          return Response.json({ type: 4, data: { content: "❌ N수 레이드는 Discord 메시지의 '레이드 참가' 버튼을 이용해주세요.", flags: 64 } })
         }
 
         if (raid.participants.some(p => p.userId === userId)) {
@@ -1619,6 +1749,131 @@ export async function POST(request) {
           data: {
             content: `✅ **${userName}**님이 ${roleText}로 참가했습니다!\n캐릭터: ${char.class} ${char.name} (Lv.${char.level})`,
             flags: 64
+          }
+        })
+      }
+
+      // /같이참가
+      if (commandName === "같이참가") {
+        const options = interaction.data.options || []
+        const raidId = options.find(o => o.name === "레이드id")?.value?.trim()
+        const myCharName = options.find(o => o.name === "내캐릭터")?.value?.trim()
+        const targetUserId = options.find(o => o.name === "같이참가유저")?.value
+        const targetCharName = options.find(o => o.name === "유저캐릭터")?.value?.trim()
+        const userName = interaction.member?.user?.username || interaction.user?.username
+
+        const raid = await Raid.findById(raidId).catch(() => null)
+        if (!raid) return Response.json({ type: 4, data: { content: "❌ 레이드를 찾을 수 없습니다.", flags: 64 } })
+        if (raid.status !== "모집중") return Response.json({ type: 4, data: { content: "❌ 모집이 마감된 레이드입니다.", flags: 64 } })
+        if (isExpired(raid)) return Response.json({ type: 4, data: { content: "❌ 기한이 지난 레이드입니다.", flags: 64 } })
+        if (raid.guildId && raid.guildId !== guildId) return Response.json({ type: 4, data: { content: "❌ 다른 서버의 레이드입니다.", flags: 64 } })
+        if (raid.totalRounds >= 2) return Response.json({ type: 4, data: { content: "❌ N수 레이드는 /참가 명령어를 이용해주세요.", flags: 64 } })
+
+        const myUserChars = await UserCharacters.findOne({ discordId: userId })
+        if (!myUserChars) return Response.json({ type: 4, data: { content: "❌ 캐릭터 연동이 필요합니다.", flags: 64 } })
+        const myCharsObj = myUserChars.toObject()
+        let myAllChars = []
+        if (myCharsObj.accounts?.length > 0) {
+          myCharsObj.accounts.forEach(acc => (acc.characters || []).forEach(c => myAllChars.push(c)))
+        } else {
+          myAllChars = myCharsObj.characters || []
+        }
+        const myChar = myAllChars.find(c => c.name === myCharName)
+        if (!myChar) return Response.json({ type: 4, data: { content: `❌ 내 캐릭터 "${myCharName}"를 찾을 수 없습니다.`, flags: 64 } })
+
+        const targetUserChars = await UserCharacters.findOne({ discordId: targetUserId })
+        let targetChar = null
+        if (targetUserChars) {
+          const targetCharsObj = targetUserChars.toObject()
+          let targetAllChars = []
+          if (targetCharsObj.accounts?.length > 0) {
+            targetCharsObj.accounts.forEach(acc => (acc.characters || []).forEach(c => targetAllChars.push(c)))
+          } else {
+            targetAllChars = targetCharsObj.characters || []
+          }
+          targetChar = targetAllChars.find(c => c.name === targetCharName)
+        }
+        if (!targetChar) {
+          targetChar = { name: targetCharName, class: null, level: null, combatPower: null }
+        }
+
+        if (raid.participants.some(p => p.userId === userId)) {
+          return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
+        }
+        if (raid.participants.some(p => p.userId === targetUserId)) {
+          return Response.json({ type: 4, data: { content: "❌ 대상 유저가 이미 참가 신청한 레이드입니다.", flags: 64 } })
+        }
+
+        const supporterSlots = raid.maxPlayers / 4
+        const dealerSlots = raid.maxPlayers - supporterSlots
+        const minLevel = getMinLevel(raid.raidAlias, raid.difficulty) || getMinLevel(raid.raidName, raid.difficulty) || 0
+
+        const myRole = SUPPORTER_CLASSES.includes(myChar.class) ? "support" : "dealer"
+        const targetRole = targetChar.class
+          ? (SUPPORTER_CLASSES.includes(targetChar.class) ? "support" : "dealer")
+          : "dealer"
+
+        if (minLevel && myChar.level < minLevel) {
+          return Response.json({
+            type: 4,
+            data: { content: `❌ 내 캐릭터 레벨이 부족합니다. (필요: ${minLevel}+, 현재: ${myChar.level})`, flags: 64 }
+          })
+        }
+
+        const dealers = raid.participants.filter(p => p.role === "dealer")
+        const supporters = raid.participants.filter(p => p.role === "support")
+        const dealerAdd = (myRole === "dealer" ? 1 : 0) + (targetRole === "dealer" ? 1 : 0)
+        const supporterAdd = (myRole === "support" ? 1 : 0) + (targetRole === "support" ? 1 : 0)
+
+        if (dealers.length + dealerAdd > dealerSlots) {
+          return Response.json({ type: 4, data: { content: "❌ 딜러 자리가 부족합니다.", flags: 64 } })
+        }
+        if (supporters.length + supporterAdd > supporterSlots) {
+          return Response.json({ type: 4, data: { content: "❌ 서포터 자리가 부족합니다.", flags: 64 } })
+        }
+
+        const userImage = interaction.member?.user?.avatar
+          ? `https://cdn.discordapp.com/avatars/${userId}/${interaction.member.user.avatar}.png`
+          : null
+
+        raid.participants.push({
+          userId, userName, userImage,
+          role: myRole,
+          characterName: myChar.name,
+          characterClass: myChar.class,
+          characterLevel: myChar.level,
+          characterCombatPower: myChar.combatPower || null,
+        })
+        raid.participants.push({
+          userId: targetUserId,
+          userName: targetCharName,
+          userImage: null,
+          role: targetRole,
+          characterName: targetChar.name,
+          characterClass: targetChar.class,
+          characterLevel: targetChar.level,
+          characterCombatPower: targetChar.combatPower || null,
+        })
+
+        const newDealers = raid.participants.filter(p => p.role === "dealer")
+        const newSupporters = raid.participants.filter(p => p.role === "support")
+        const isFull = newDealers.length >= dealerSlots && newSupporters.length >= supporterSlots
+
+        if (isFull && raid.isMobaChul) {
+          await raid.save()
+          await launchRaid(raid)
+        } else {
+          if (isFull) raid.status = "모집완료"
+          await raid.save()
+          updateMessage(raid).catch(e => console.error("같이참가 Discord 업데이트 실패:", e))
+        }
+
+        const myRoleText = myRole === "dealer" ? "⚔️ 딜러" : "🛡️ 서포터"
+        const targetRoleText = targetRole === "dealer" ? "⚔️ 딜러" : "🛡️ 서포터"
+        return Response.json({
+          type: 4,
+          data: {
+            content: `✅ **${userName}**님과 <@${targetUserId}>님이 함께 참가했습니다!\n${userName}: ${myRoleText} ${myChar.class} ${myChar.name} (Lv.${myChar.level})\n<@${targetUserId}>: ${targetRoleText} ${targetChar.name}`
           }
         })
       }
