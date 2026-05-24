@@ -1335,11 +1335,174 @@ export async function POST(request) {
         })
       }
 
-      // /모집 — 미구현
+      // /모집
       if (commandName === "모집") {
+        const options = interaction.data.options || []
+        const raidAlias       = options.find(o => o.name === "레이드")?.value
+        const difficulty      = options.find(o => o.name === "난이도")?.value
+        const difficultyLevel = options.find(o => o.name === "숙련도")?.value
+        const isMobaChulStr   = options.find(o => o.name === "모바출")?.value
+        const dateInput       = (options.find(o => o.name === "날짜")?.value || "").trim()
+        const timeInput       = (options.find(o => o.name === "시간")?.value || "").trim()
+        const totalRounds     = options.find(o => o.name === "n수")?.value || 1
+        const char1 = options.find(o => o.name === "캐릭터1")?.value?.trim() || null
+        const char2 = options.find(o => o.name === "캐릭터2")?.value?.trim() || null
+        const char3 = options.find(o => o.name === "캐릭터3")?.value?.trim() || null
+        const char4 = options.find(o => o.name === "캐릭터4")?.value?.trim() || null
+        const userName = interaction.member?.user?.username || interaction.user?.username
+
+        const isMobaChul = isMobaChulStr === "예"
+
+        const ALIAS_TO_KEY = {
+          "에키드나":   "ekidna",
+          "에기르":     "aegir",
+          "아브렐슈드": "abrelshud",
+          "모르둠":     "mordoom",
+          "아르모체":   "armoche",
+          "카제로스":   "kazeros",
+          "세르카":     "serka",
+          "지평의성당": "arsenous",
+        }
+        const raidKey  = ALIAS_TO_KEY[raidAlias]
+        const raidInfo = RAID_DATA[raidKey]
+
+        if (!raidInfo) {
+          return Response.json({ type: 4, data: { content: "❌ 알 수 없는 레이드입니다.", flags: 64 } })
+        }
+        if (!raidInfo.difficulties.includes(difficulty)) {
+          return Response.json({ type: 4, data: { content: `❌ ${raidInfo.raidAlias}에서 지원하지 않는 난이도입니다.`, flags: 64 } })
+        }
+
+        if (!isMobaChul) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+            return Response.json({ type: 4, data: { content: "❌ 날짜 형식이 올바르지 않습니다. (예: 2026-05-24)", flags: 64 } })
+          }
+          if (!/^\d{2}:\d{2}$/.test(timeInput)) {
+            return Response.json({ type: 4, data: { content: "❌ 시간 형식이 올바르지 않습니다. (예: 21:00)", flags: 64 } })
+          }
+        }
+
+        const settings = await GuildSettings.findOne({ guildId })
+        if (!settings?.announcementChannelId) {
+          return Response.json({ type: 4, data: { content: "❌ 공고 채널이 설정되지 않았습니다. 봇 설정 페이지에서 먼저 설정해주세요.", flags: 64 } })
+        }
+
+        const weekStart = getLoaWeekStart()
+        const weekEnd = new Date(weekStart)
+        weekEnd.setUTCDate(weekStart.getUTCDate() + 7)
+        const weeklyCount = await Raid.countDocuments({
+          guildId,
+          createdAt: { $gte: weekStart, $lt: weekEnd }
+        })
+        if (weeklyCount >= 20) {
+          return Response.json({ type: 4, data: { content: "❌ 이번 주 레이드 공고 횟수(20회)를 초과했습니다.", flags: 64 } })
+        }
+
+        const charNames = [char1, char2, char3, char4].filter(Boolean)
+        let hostCharacters = []
+
+        if (charNames.length > 0) {
+          const userChars = await UserCharacters.findOne({ discordId: userId })
+          if (userChars) {
+            const userCharsObj = userChars.toObject()
+            let allChars = []
+            if (userCharsObj.accounts?.length > 0) {
+              userCharsObj.accounts.forEach(acc =>
+                (acc.characters || []).forEach(c => allChars.push(c))
+              )
+            } else {
+              allChars = userCharsObj.characters || []
+            }
+            hostCharacters = charNames.map(name => allChars.find(c => c.name === name)).filter(Boolean)
+          }
+        }
+
+        const hostImage = interaction.member?.user?.avatar
+          ? `https://cdn.discordapp.com/avatars/${userId}/${interaction.member.user.avatar}.png`
+          : null
+
+        const buildRounds = () => Array.from({ length: totalRounds }, (_, i) => {
+          const order = i + 1
+          const participants = []
+          const char = hostCharacters[i]
+          if (char) {
+            const role = SUPPORTER_CLASSES.includes(char.class) ? "support" : "dealer"
+            participants.push({
+              userId, userName, userImage: hostImage, role,
+              characterName: char.name, characterClass: char.class,
+              characterLevel: char.level, characterCombatPower: char.combatPower || null,
+            })
+          }
+          return { order, participants }
+        })
+
+        let topParticipants = []
+        if (totalRounds === 1 && hostCharacters.length > 0) {
+          const char = hostCharacters[0]
+          const role = SUPPORTER_CLASSES.includes(char.class) ? "support" : "dealer"
+          topParticipants = [{
+            userId, userName, userImage: hostImage, role,
+            characterName: char.name, characterClass: char.class,
+            characterLevel: char.level, characterCombatPower: char.combatPower || null,
+          }]
+        }
+
+        const raid = await Raid.create({
+          raidName: raidInfo.raidName,
+          raidAlias: raidInfo.raidAlias,
+          raidTag: raidInfo.raidTag,
+          difficulty,
+          maxPlayers: raidInfo.maxPlayers,
+          date: isMobaChul ? "" : dateInput,
+          time: isMobaChul ? "" : timeInput,
+          isMobaChul,
+          difficulty_level: difficultyLevel || null,
+          discordChannelId: settings.announcementChannelId,
+          guildId,
+          hostId: userId,
+          hostName: userName,
+          hostImage,
+          participants: totalRounds === 1 ? topParticipants : [],
+          status: "모집중",
+          notifyMinutesBefore: 30,
+          totalRounds,
+          rounds: buildRounds(),
+          isTrain: false,
+          trainKey: null,
+          trainLabel: null,
+          trainRaids: [],
+        })
+
+        try {
+          const msgId = await sendRaidAnnouncement(
+            settings.announcementChannelId,
+            {
+              raidName: raidInfo.raidName,
+              raidAlias: raidInfo.raidAlias,
+              difficulty,
+              maxPlayers: raidInfo.maxPlayers,
+              date: isMobaChul ? "" : dateInput,
+              time: isMobaChul ? "" : timeInput,
+              isMobaChul,
+              totalRounds,
+              difficulty_level: difficultyLevel || null,
+              rounds: buildRounds(),
+            },
+            userName,
+            raid._id.toString(),
+            totalRounds === 1 ? topParticipants : []
+          )
+          await Raid.findByIdAndUpdate(raid._id, { discordMessageId: msgId })
+        } catch (e) {
+          console.error("/모집 공고 메시지 전송 실패:", e.message)
+        }
+
         return Response.json({
           type: 4,
-          data: { content: "🚧 준비 중입니다.", flags: 64 }
+          data: {
+            content: `✅ **${raidInfo.raidAlias} ${difficulty} (${difficultyLevel})** 모집이 생성되었습니다!\n<#${settings.announcementChannelId}>를 확인해주세요.`,
+            flags: 64
+          }
         })
       }
 
