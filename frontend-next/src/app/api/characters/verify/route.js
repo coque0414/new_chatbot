@@ -108,6 +108,8 @@ export async function POST(request) {
       await new Promise(r => setTimeout(r, 200))
     }
 
+    const filteredCharacters = characters.filter(c => c.level >= 1680)
+
     await connectDB()
     const existing = await UserCharacters.findOne({ discordId })
     const currentAccounts = existing?.accounts || []
@@ -120,7 +122,7 @@ export async function POST(request) {
     const accountEntry = {
       accountIndex,
       representCharacter: characterName.trim(),
-      characters,
+      characters: filteredCharacters,
       lastSyncAt: new Date(),
     }
 
@@ -135,7 +137,7 @@ export async function POST(request) {
       update.$set = {
         ...(update.$set || {}),
         representCharacter: characterName.trim(),
-        characters,
+        characters: filteredCharacters,
         verifiedAt: new Date(),
         lastSyncAt: new Date(),
       }
@@ -149,7 +151,7 @@ export async function POST(request) {
 
     await UserCharacters.findOneAndUpdate({ discordId }, update, options)
 
-    return Response.json({ ok: true, characters })
+    return Response.json({ ok: true, characters: filteredCharacters })
   } catch (e) {
     console.error("[characters/verify]", e.message)
     return Response.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })

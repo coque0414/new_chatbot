@@ -2227,9 +2227,10 @@ export async function POST(request) {
         }
         if (!characters) return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다.", flags: 64 } })
 
+        const filteredChars = characters.filter(c => c.level >= 1680)
         await UserCharacters.findOneAndUpdate(
           { discordId: userId },
-          { discordId: userId, representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() },
+          { discordId: userId, representCharacter: characterName, characters: filteredChars, verifiedAt: new Date(), lastSyncAt: new Date() },
           { upsert: true, new: true }
         )
 
@@ -2237,7 +2238,7 @@ export async function POST(request) {
         if (!trainRaid || trainRaid.status !== "모집중") return Response.json({ type: 4, data: { content: "❌ 모집이 마감된 레이드입니다.", flags: 64 } })
         if (trainRaid.participants.some(p => p.userId === userId)) return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
 
-        const eligibleChars = filterEligibleCharactersForTrain(characters, role, trainRaid)
+        const eligibleChars = filterEligibleCharactersForTrain(filteredChars, role, trainRaid)
         const minLevels = (trainRaid.trainRaids || []).map(r => getMinLevel(r.raidAlias, r.difficulty)).filter(l => l > 0)
         const maxMinLevel = minLevels.length > 0 ? Math.max(...minLevels) : 0
 
@@ -2302,12 +2303,13 @@ export async function POST(request) {
         }
 
         // UserCharacters 저장
+        const filteredChars = characters.filter(c => c.level >= 1680)
         await UserCharacters.findOneAndUpdate(
           { discordId: userId },
           {
             discordId: userId,
             representCharacter: characterName,
-            characters,
+            characters: filteredChars,
             verifiedAt: new Date(),
             lastSyncAt: new Date(),
           },
@@ -2324,7 +2326,7 @@ export async function POST(request) {
           return Response.json({ type: 4, data: { content: "❌ 이미 참가 신청한 레이드입니다.", flags: 64 } })
         }
 
-        const eligibleChars = filterEligibleCharacters(characters, role, raid)
+        const eligibleChars = filterEligibleCharacters(filteredChars, role, raid)
         const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
 
         if (eligibleChars.length === 0) {
@@ -2383,8 +2385,9 @@ export async function POST(request) {
           results.push({ accountIndex, characterName: charNames[i], characters })
         }
         for (const { accountIndex, characterName: charName, characters } of results) {
-          const accountEntry = { accountIndex, representCharacter: charName, characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
-          const topLevelUpdate = accountIndex === 1 ? { representCharacter: charName, characters, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
+          const filteredChars = characters.filter(c => c.level >= 1680)
+          const accountEntry = { accountIndex, representCharacter: charName, characters: filteredChars.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
+          const topLevelUpdate = accountIndex === 1 ? { representCharacter: charName, characters: filteredChars, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
           const updated = await UserCharacters.findOneAndUpdate(
             { discordId: userId, "accounts.accountIndex": accountIndex },
             { $set: { "accounts.$[elem]": accountEntry, ...topLevelUpdate } },
@@ -2422,8 +2425,9 @@ export async function POST(request) {
           results.push({ accountIndex, characterName: charNames[i], characters })
         }
         for (const { accountIndex, characterName: charName, characters } of results) {
-          const accountEntry = { accountIndex, representCharacter: charName, characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
-          const topLevelUpdate = accountIndex === 1 ? { representCharacter: charName, characters, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
+          const filteredChars = characters.filter(c => c.level >= 1680)
+          const accountEntry = { accountIndex, representCharacter: charName, characters: filteredChars.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
+          const topLevelUpdate = accountIndex === 1 ? { representCharacter: charName, characters: filteredChars, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
           const updated = await UserCharacters.findOneAndUpdate(
             { discordId: userId, "accounts.accountIndex": accountIndex },
             { $set: { "accounts.$[elem]": accountEntry, ...topLevelUpdate } },
@@ -2449,8 +2453,9 @@ export async function POST(request) {
         }
         if (!characters) return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다. 캐릭터명을 확인해주세요.", flags: 64 } })
 
-        const accountEntry = { accountIndex, representCharacter: characterName, characters: characters.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
-        const topLevelUpdate = accountIndex === 1 ? { representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
+        const filteredChars = characters.filter(c => c.level >= 1680)
+        const accountEntry = { accountIndex, representCharacter: characterName, characters: filteredChars.map(c => ({ name: c.name, class: c.class, level: c.level, server: c.server })), lastSyncAt: new Date() }
+        const topLevelUpdate = accountIndex === 1 ? { representCharacter: characterName, characters: filteredChars, verifiedAt: new Date(), lastSyncAt: new Date() } : {}
         const updated = await UserCharacters.findOneAndUpdate(
           { discordId: userId, "accounts.accountIndex": accountIndex },
           { $set: { "accounts.$[elem]": accountEntry, ...topLevelUpdate } },
@@ -2461,10 +2466,12 @@ export async function POST(request) {
           if (accountIndex === 1) pushUpdate.$set = topLevelUpdate
           await UserCharacters.findOneAndUpdate({ discordId: userId }, pushUpdate, { upsert: true })
         }
-        const maxChar = characters.reduce((a, b) => b.level > a.level ? b : a, characters[0])
+        const maxChar = filteredChars.length > 0
+          ? filteredChars.reduce((a, b) => b.level > a.level ? b : a, filteredChars[0])
+          : null
         return Response.json({
           type: 4,
-          data: { flags: 64, content: [`✅ **${characterName}** 캐릭터 변경이 완료되었습니다!`, "", "📋 **원정대 정보**", `총 ${characters.length}개 캐릭터 등록`, `최고 레벨: ${maxChar.level} (${maxChar.class})`, "", "레이드 참가 시 캐릭터 정보와 함께 참가할 수 있어요!"].join("\n") },
+          data: { flags: 64, content: [`✅ **${characterName}** 캐릭터 변경이 완료되었습니다!`, "", "📋 **원정대 정보**", `총 ${filteredChars.length}개 캐릭터 등록 (1680+)`, ...(maxChar ? [`최고 레벨: ${maxChar.level} (${maxChar.class})`] : []), "", "레이드 참가 시 캐릭터 정보와 함께 참가할 수 있어요!"].join("\n") },
         })
       }
 
@@ -2482,9 +2489,10 @@ export async function POST(request) {
         }
         if (!characters) return Response.json({ type: 4, data: { content: "❌ 캐릭터를 찾을 수 없습니다.", flags: 64 } })
 
+        const filteredChars = characters.filter(c => c.level >= 1680)
         await UserCharacters.findOneAndUpdate(
           { discordId: userId },
-          { discordId: userId, representCharacter: characterName, characters, verifiedAt: new Date(), lastSyncAt: new Date() },
+          { discordId: userId, representCharacter: characterName, characters: filteredChars, verifiedAt: new Date(), lastSyncAt: new Date() },
           { upsert: true, new: true }
         )
 
@@ -2494,7 +2502,7 @@ export async function POST(request) {
         }
 
         const minLevel = getMinLevel(raid.raidAlias, raid.difficulty)
-        const eligible = characters.filter(c => !minLevel || c.level >= minLevel)
+        const eligible = filteredChars.filter(c => !minLevel || c.level >= minLevel)
         if (eligible.length === 0) {
           return Response.json({ type: 4, data: { content: `✅ 캐릭터 연동 완료!\n\n❌ 이 레이드에 참가 가능한 캐릭터가 없습니다.\n(최소 레벨: ${minLevel}+)`, flags: 64 } })
         }
