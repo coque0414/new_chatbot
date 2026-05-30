@@ -1832,7 +1832,20 @@ export async function POST(request) {
           finalPairCount = 1
         } else {
           if (pairCount < raid.totalRounds) {
-            warningMsg = `\n⚠️ ${raid.totalRounds}수 레이드인데 캐릭터 쌍이 ${pairCount}개만 입력됐습니다. 나머지 ${raid.totalRounds - pairCount}개 슬롯은 비워두고 등록했습니다.`
+            const myCharParams = myChars.map((c, i) => `내캐릭터${i + 1}:${c}`).join(" ")
+            const targetCharParams = targetChars.map((c, i) => `유저캐릭터${i + 1}:${c}`).join(" ")
+            return Response.json({
+              type: 4,
+              data: {
+                content: [
+                  `❌ ${raid.totalRounds}수 레이드인데 캐릭터 쌍이 ${pairCount}개만 입력됐습니다.`,
+                  `내캐릭터${pairCount + 1}~내캐릭터${raid.totalRounds} / 유저캐릭터${pairCount + 1}~유저캐릭터${raid.totalRounds} 를 추가해서 다시 입력해주세요:`,
+                  ``,
+                  `/같이참가 레이드id:${raidId} ${myCharParams} 같이참가유저:<@${targetUserId}> ${targetCharParams}`,
+                ].join("\n"),
+                flags: 64,
+              },
+            })
           } else if (pairCount > raid.totalRounds) {
             warningMsg = `\n⚠️ ${raid.totalRounds}수보다 많은 캐릭터가 입력되어 초과된 캐릭터를 제외하고 등록했습니다.`
           }
