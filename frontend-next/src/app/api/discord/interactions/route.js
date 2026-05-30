@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import GuildSettings from "@/lib/models/GuildSettings"
@@ -1233,7 +1234,7 @@ export async function POST(request) {
 
         const response = Response.json({ type: 4, data: { content: `✅ **${userName}**님이 ${raid.totalRounds}수 레이드에 참가했습니다!`, flags: 64 } })
         const updatedRaid = await Raid.findById(raidId)
-        if (updatedRaid) updateDiscordMessage(updatedRaid).catch(e => console.error("N수 Discord 업데이트 실패:", e))
+        if (updatedRaid) after(async () => { await updateDiscordMessage(updatedRaid) })
 
         return response
       }
@@ -1696,7 +1697,7 @@ export async function POST(request) {
           if (allFull) raid.status = "모집완료"
           raid.markModified("rounds")
           await raid.save()
-          updateMessage(raid).catch(e => console.error("N수 참가 Discord 업데이트 실패:", e))
+          after(async () => { await updateMessage(raid) })
           return Response.json({
             type: 4,
             data: {
@@ -1783,7 +1784,7 @@ export async function POST(request) {
         }
         await raid.save()
 
-        updateMessage(raid).catch(e => console.error("Discord 메시지 업데이트 실패:", e.message))
+        after(async () => { await updateMessage(raid) })
 
         const roleText = role === "dealer" ? "⚔️ 딜러" : "🛡️ 서포터"
         return Response.json({
@@ -1950,7 +1951,7 @@ export async function POST(request) {
           }
           if (isFull) raid.status = "모집완료"
           await raid.save()
-          updateMessage(raid).catch(e => console.error("같이참가 Discord 업데이트 실패:", e))
+          after(async () => { await updateMessage(raid) })
 
           return Response.json({
             type: 4,
@@ -2025,7 +2026,7 @@ export async function POST(request) {
         if (allFull) raid.status = "모집완료"
         raid.markModified("rounds")
         await raid.save()
-        updateMessage(raid).catch(e => console.error("같이참가 Discord 업데이트 실패:", e))
+        after(async () => { await updateMessage(raid) })
 
         const charSummary = myChars.slice(0, finalPairCount).join(", ")
         const targetSummary = targetChars.slice(0, finalPairCount).join(", ")
