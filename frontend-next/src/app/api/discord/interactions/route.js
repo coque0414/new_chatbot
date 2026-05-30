@@ -326,6 +326,47 @@ export async function POST(request) {
         })
       }
 
+      // /같이참가 유저캐릭터1~4 autocomplete
+      if (commandName === "같이참가" && focusedOption?.name?.startsWith("유저캐릭터")) {
+        const targetUserIdForAc = interaction.data.options
+          ?.find(o => o.name === "같이참가유저")?.value
+
+        if (!targetUserIdForAc) {
+          return Response.json({ type: 8, data: { choices: [] } })
+        }
+
+        const targetUserCharsAc = await UserCharacters.findOne({ discordId: targetUserIdForAc })
+        if (!targetUserCharsAc) {
+          return Response.json({ type: 8, data: { choices: [] } })
+        }
+
+        const targetCharsObjAc = targetUserCharsAc.toObject()
+        let targetAllCharsAc = []
+        if (targetCharsObjAc.accounts?.length > 0) {
+          targetCharsObjAc.accounts.forEach(acc =>
+            (acc.characters || []).forEach(c => targetAllCharsAc.push(c))
+          )
+        } else {
+          targetAllCharsAc = targetCharsObjAc.characters || []
+        }
+
+        const queryAc = focusedOption.value?.toLowerCase() || ""
+        const filteredAc = targetAllCharsAc
+          .filter(c => c.level > 0 && c.name.toLowerCase().includes(queryAc))
+          .sort((a, b) => b.level - a.level)
+          .slice(0, 25)
+
+        return Response.json({
+          type: 8,
+          data: {
+            choices: filteredAc.map(c => ({
+              name: `${c.name} (${c.class}) Lv.${c.level}`,
+              value: c.name
+            }))
+          }
+        })
+      }
+
       return Response.json({ type: 8, data: { choices: [] } })
     }
 
@@ -1291,30 +1332,29 @@ export async function POST(request) {
         const memberPermissions = BigInt(interaction.member?.permissions || "0")
         const isAdmin = (memberPermissions & BigInt(0x8)) === BigInt(0x8)
 
-        const query = {
-          guildId,
-          isMobaChul: false,
-          status: { $nin: ["취소", "출발완료"] },
-        }
+        const query = { guildId }
         if (!isAdmin) query.hostId = userId
 
         const raids = await Raid.find(query)
-        const expiredRaids = raids.filter(r => {
-          if (!r.date || !r.time) return false
-          const raidDateTime = new Date(`${r.date}T${r.time}:00+09:00`)
-          return now > raidDateTime
+        const targetRaids = raids.filter(r => {
+          if (r.status === "취소" || r.status === "출발완료") return true
+          if (!r.isMobaChul && r.date && r.time) {
+            const raidDateTime = new Date(`${r.date}T${r.time}:00+09:00`)
+            return now > raidDateTime
+          }
+          return false
         })
 
-        if (expiredRaids.length === 0) {
+        if (targetRaids.length === 0) {
           return Response.json({
             type: 4,
-            data: { content: "❌ 삭제할 지난 레이드가 없습니다.", flags: 64 }
+            data: { content: "❌ 삭제할 레이드가 없습니다.", flags: 64 }
           })
         }
 
         const token = process.env.DISCORD_BOT_TOKEN
         let deletedCount = 0
-        for (const raid of expiredRaids) {
+        for (const raid of targetRaids) {
           try {
             if (raid.discordMessageId && raid.discordChannelId) {
               await fetch(
@@ -1333,7 +1373,7 @@ export async function POST(request) {
         return Response.json({
           type: 4,
           data: {
-            content: `✅ ${scopeText} 지난 레이드 ${deletedCount}개를 삭제했습니다.`,
+            content: `✅ ${scopeText} 지난/종료 레이드 ${deletedCount}개를 삭제했습니다.`,
             flags: 64
           }
         })
