@@ -1352,31 +1352,33 @@ export async function POST(request) {
           })
         }
 
-        const token = process.env.DISCORD_BOT_TOKEN
-        let deletedCount = 0
-        for (const raid of targetRaids) {
-          try {
-            if (raid.discordMessageId && raid.discordChannelId) {
-              await fetch(
-                `${DISCORD_API}/channels/${raid.discordChannelId}/messages/${raid.discordMessageId}`,
-                { method: "DELETE", headers: { Authorization: `Bot ${token}` } }
-              )
-            }
-            await Raid.findByIdAndUpdate(raid._id, { status: "취소" })
-            deletedCount++
-          } catch (e) {
-            console.error("레이드 삭제 오류:", e.message)
-          }
-        }
-
         const scopeText = isAdmin ? "서버 전체" : "내가 주최한"
-        return Response.json({
+        const response = Response.json({
           type: 4,
           data: {
-            content: `✅ ${scopeText} 지난/종료 레이드 ${deletedCount}개를 삭제했습니다.`,
+            content: `✅ ${scopeText} 지난/종료 레이드 ${targetRaids.length}개를 삭제합니다...`,
             flags: 64
           }
         })
+
+        const token = process.env.DISCORD_BOT_TOKEN
+        Promise.all(
+          targetRaids.map(async (raid) => {
+            try {
+              if (raid.discordMessageId && raid.discordChannelId) {
+                await fetch(
+                  `${DISCORD_API}/channels/${raid.discordChannelId}/messages/${raid.discordMessageId}`,
+                  { method: "DELETE", headers: { Authorization: `Bot ${token}` } }
+                )
+              }
+              await Raid.findByIdAndUpdate(raid._id, { status: "취소" })
+            } catch (e) {
+              console.error("레이드 삭제 오류:", e.message)
+            }
+          })
+        ).catch(e => console.error("지난레이드삭제 백그라운드 오류:", e.message))
+
+        return response
       }
 
       // /모집
