@@ -3,17 +3,23 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import FixedRaid from "@/lib/models/FixedRaid"
 
-const DISCORD_API = "https://discord.com/api/v10"
-
-async function checkAdminPermission(guildId, userId) {
-  const token = process.env.DISCORD_BOT_TOKEN
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
-    headers: { Authorization: `Bot ${token}` },
-  })
-  if (!res.ok) return false
-  const member = await res.json()
-  const perms = BigInt(member.permissions || "0")
-  return (perms & BigInt(0x8)) === BigInt(0x8)
+async function checkAdminPermission(session, guildId) {
+  const accessToken = session?.accessToken
+  if (!accessToken) return false
+  try {
+    const res = await fetch(
+      "https://discord.com/api/v10/users/@me/guilds",
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    )
+    if (!res.ok) return false
+    const guilds = await res.json()
+    const guild = guilds.find(g => g.id === guildId)
+    if (!guild) return false
+    const perms = BigInt(guild.permissions || "0")
+    return (perms & BigInt(0x8)) === BigInt(0x8)
+  } catch {
+    return false
+  }
 }
 
 export async function GET(request) {
@@ -35,7 +41,6 @@ export async function POST(request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
-    const userId = session.user.discordId || session.user.id
 
     const body = await request.json()
     const { guildId, weekday, time, raidAlias, raidName, raidTag, difficulty, difficulty_level, maxPlayers } = body
@@ -44,7 +49,7 @@ export async function POST(request) {
       return Response.json({ error: "필수 필드가 누락됐습니다." }, { status: 400 })
     }
 
-    const isAdmin = await checkAdminPermission(guildId, userId)
+    const isAdmin = await checkAdminPermission(session, guildId)
     if (!isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 })
 
     const slots = Array.from({ length: maxPlayers }, (_, i) => ({
