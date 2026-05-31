@@ -17,10 +17,18 @@ export async function GET(request) {
     const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
       headers: { Authorization: `Bot ${token}` },
     })
+    console.log("[admin-check] Discord API status:", res.status)
     if (!res.ok) return Response.json({ isAdmin: false })
 
     const member = await res.json()
+    console.log("[admin-check] member.nick:", member.nick)
+    console.log("[admin-check] member.permissions:", member.permissions)
+    console.log("[admin-check] permissions type:", typeof member.permissions)
+
     const perms = BigInt(member.permissions || "0")
+    console.log("[admin-check] perms BigInt:", perms)
+    console.log("[admin-check] ADMINISTRATOR check:", (perms & BigInt(0x8)) === BigInt(0x8))
+
     const isAdmin = (perms & BigInt(0x8)) === BigInt(0x8)
 
     return Response.json({ isAdmin })
