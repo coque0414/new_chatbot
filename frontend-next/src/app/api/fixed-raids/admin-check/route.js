@@ -18,7 +18,13 @@ export async function GET(request) {
       headers: { Authorization: `Bot ${token}` },
     })
     console.log("[admin-check] Discord API status:", res.status)
-    if (!res.ok) return Response.json({ isAdmin: false })
+    if (!res.ok) return Response.json({
+      isAdmin: false,
+      debug: {
+        discordApiStatus: res.status,
+        error: "Discord API 호출 실패",
+      },
+    })
 
     const member = await res.json()
     console.log("[admin-check] member.nick:", member.nick)
@@ -29,9 +35,17 @@ export async function GET(request) {
     console.log("[admin-check] perms BigInt:", perms)
     console.log("[admin-check] ADMINISTRATOR check:", (perms & BigInt(0x8)) === BigInt(0x8))
 
-    const isAdmin = (perms & BigInt(0x8)) === BigInt(0x8)
-
-    return Response.json({ isAdmin })
+    return Response.json({
+      isAdmin: (perms & BigInt(0x8)) === BigInt(0x8),
+      debug: {
+        discordApiStatus: res.status,
+        hasPermissions: !!member.permissions,
+        permissionsRaw: member.permissions,
+        permissionsType: typeof member.permissions,
+        userId,
+        guildId,
+      },
+    })
   } catch (e) {
     console.error("[fixed-raids/admin-check]", e.message)
     return Response.json({ isAdmin: false })
