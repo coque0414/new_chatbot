@@ -1,17 +1,17 @@
 "use client"
 
 import { useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, Edit, X, Shield } from "lucide-react"
+import { Plus, Trash2, X, Shield } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import { getTheme } from "@/lib/themes"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { SUPPORTER_CLASSES } from "@/lib/lostarkData"
 
 const WEEKDAYS = ["수", "목", "금", "토", "일", "월", "화"]
-
 const SKILL_CHOICES = ["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"]
 
 const RAID_LIST = [
@@ -69,6 +69,11 @@ export default function FixedRaidsPage() {
   const [createForm, setCreateForm] = useState({ ...EMPTY_FORM })
   const [creating, setCreating] = useState(false)
 
+  const [dragData, setDragData] = useState(null)
+  const [dragOverSlot, setDragOverSlot] = useState(null) // { raidId, slotIndex }
+  const [toast, setToast] = useState(null) // { message, type: "error"|"success" }
+  const toastTimerRef = useRef(null)
+
   useEffect(() => {
     setMounted(true)
     const saved = localStorage.getItem("themeId")
@@ -117,6 +122,15 @@ export default function FixedRaidsPage() {
       .finally(() => setLoading(false))
   }, [selectedGuildId])
 
+  useEffect(() => {
+    if (!toast) return
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(toastTimerRef.current)
+  }, [toast])
+
+  const showToast = (message, type = "error") => setToast({ message, type })
+
   const handleCreate = async () => {
     const raidInfo = RAID_LIST.find(r => r.key === createForm.raidKey)
     if (!raidInfo || !createForm.difficulty || !createForm.time) return
@@ -161,16 +175,109 @@ export default function FixedRaidsPage() {
     }
   }
 
+  const handleSlotDrop = async (raidId, slotIndex) => {
+    if (!dragData || !isAdmin) return
+    const raid = fixedRaids.find(r => r._id === raidId)
+    if (!raid) return
+
+    const slot = raid.slots.find(s => s.slotIndex === slotIndex)
+    if (!slot) return
+
+    if (slot.isSupporter && dragData.role !== "support") {
+      showToast("서포터 전용 슬롯입니다. 서포터 직업만 배치 가능합니다.", "error")
+      setDragData(null)
+      setDragOverSlot(null)
+      return
+    }
+
+    const dupChar = raid.slots.find(s => s.slotIndex !== slotIndex && s.characterName === dragData.characterName)
+    if (dupChar) {
+      showToast("같은 레이드에 동일 캐릭터가 이미 있습니다.", "error")
+      setDragData(null)
+      setDragOverSlot(null)
+      return
+    }
+
+    const dupUser = raid.slots.find(s => s.slotIndex !== slotIndex && s.discordId === dragData.discordId)
+    if (dupUser) {
+      showToast("같은 레이드에 해당 유저가 이미 다른 슬롯에 있습니다.", "error")
+      setDragData(null)
+      setDragOverSlot(null)
+      return
+    }
+
+    const updatedSlots = raid.slots.map(s =>
+      s.slotIndex === slotIndex
+        ? {
+            ...s,
+            discordId: dragData.discordId,
+            serverNick: dragData.serverNick,
+            characterName: dragData.characterName,
+            characterClass: dragData.characterClass,
+            characterLevel: dragData.characterLevel,
+            characterCombatPower: dragData.characterCombatPower ?? null,
+            role: dragData.role,
+          }
+        : s
+    )
+
+    try {
+      const res = await fetch(`/api/fixed-raids/${raidId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slots: updatedSlots }),
+      })
+      const data = await res.json()
+      if (data.fixedRaid) {
+        setFixedRaids(prev => prev.map(r => r._id === raidId ? data.fixedRaid : r))
+        if (selectedRaid?._id === raidId) setSelectedRaid(data.fixedRaid)
+        showToast(`${dragData.characterName} 배치 완료`, "success")
+      } else {
+        showToast(data.error || "배치 실패", "error")
+      }
+    } catch {
+      showToast("서버 오류가 발생했습니다.", "error")
+    }
+
+    setDragData(null)
+    setDragOverSlot(null)
+  }
+
+  const handleSlotClear = async (raidId, slotIndex) => {
+    if (!isAdmin) return
+    const raid = fixedRaids.find(r => r._id === raidId)
+    if (!raid) return
+
+    const updatedSlots = raid.slots.map(s =>
+      s.slotIndex === slotIndex
+        ? { ...s, discordId: null, serverNick: null, characterName: null, characterClass: null, characterLevel: null, characterCombatPower: null, role: null }
+        : s
+    )
+
+    try {
+      const res = await fetch(`/api/fixed-raids/${raidId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slots: updatedSlots }),
+      })
+      const data = await res.json()
+      if (data.fixedRaid) {
+        setFixedRaids(prev => prev.map(r => r._id === raidId ? data.fixedRaid : r))
+        if (selectedRaid?._id === raidId) setSelectedRaid(data.fixedRaid)
+      } else {
+        showToast(data.error || "슬롯 초기화 실패", "error")
+      }
+    } catch {
+      showToast("서버 오류가 발생했습니다.", "error")
+    }
+  }
+
   if (!mounted || status === "loading") return null
   if (!session) return null
 
   const theme = getTheme(themeId)
   const d = theme.isDark
   const weekDates = getWeekDates()
-
-  const selectedRaidInfo = selectedRaid
-    ? RAID_LIST.find(r => r.raidAlias === selectedRaid.raidAlias)
-    : null
 
   const inputCls = `w-full px-3 py-2 rounded-xl border text-sm outline-none transition-colors
     ${d ? "bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-amber-500/50"
@@ -297,57 +404,31 @@ export default function FixedRaidsPage() {
                         등록된 고정 레이드 없음
                       </p>
                     ) : (
-                      dayRaids.map(raid => {
-                        const filledSlots = (raid.slots || []).filter(s => s.discordId).slice(0, 4)
-                        return (
+                      dayRaids.map(raid => (
+                        <div
+                          key={raid._id}
+                          className={`rounded-xl border overflow-hidden
+                            ${d ? "border-white/10 bg-white/[0.03]" : "border-purple-100 bg-purple-50/30"}`}>
+
+                          {/* 레이드 헤더 */}
                           <div
-                            key={raid._id}
                             onClick={() => setSelectedRaid(raid)}
-                            className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all
-                              ${d ? "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20"
-                                  : "border-purple-100 bg-purple-50/30 hover:bg-purple-50 hover:border-purple-200"}`}>
-
-                            {/* 레이드 정보 */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-sm font-semibold truncate
-                                  ${d ? "text-white" : "text-gray-800"}`}>
-                                  {raid.raidAlias} {raid.difficulty}
+                            className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors
+                              ${d ? "hover:bg-white/[0.04]" : "hover:bg-purple-50"}`}>
+                            <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                              <span className={`text-sm font-semibold truncate ${d ? "text-white" : "text-gray-800"}`}>
+                                {raid.raidAlias} {raid.difficulty}
+                              </span>
+                              {raid.difficulty_level && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded-full
+                                  ${d ? "bg-white/10 text-gray-400" : "bg-purple-100 text-purple-600"}`}>
+                                  {raid.difficulty_level}
                                 </span>
-                                {raid.difficulty_level && (
-                                  <span className={`text-xs px-1.5 py-0.5 rounded-full
-                                    ${d ? "bg-white/10 text-gray-400" : "bg-purple-100 text-purple-600"}`}>
-                                    {raid.difficulty_level}
-                                  </span>
-                                )}
-                                <span className={`text-xs font-medium ${d ? "text-amber-400" : "text-purple-600"}`}>
-                                  {raid.time}
-                                </span>
-                              </div>
-                              {/* 슬롯 미리보기 */}
-                              <div className="flex gap-1 mt-1.5 flex-wrap">
-                                {(raid.slots || []).slice(0, Math.min(4, raid.maxPlayers)).map(slot => (
-                                  <div key={slot.slotIndex}
-                                    className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-md
-                                      ${slot.discordId
-                                        ? slot.isSupporter
-                                          ? d ? "bg-blue-500/20 text-blue-300" : "bg-blue-50 text-blue-600"
-                                          : d ? "bg-red-500/20 text-red-300" : "bg-red-50 text-red-600"
-                                        : d ? "bg-white/5 text-gray-600" : "bg-gray-100 text-gray-400"
-                                      }`}>
-                                    {slot.isSupporter && <span className="text-[10px]">🛡</span>}
-                                    {slot.discordId ? (slot.serverNick || "?") : "빈"}
-                                  </div>
-                                ))}
-                                {raid.maxPlayers > 4 && (
-                                  <span className={`text-xs ${d ? "text-gray-600" : "text-gray-400"}`}>
-                                    +{raid.maxPlayers - 4}
-                                  </span>
-                                )}
-                              </div>
+                              )}
+                              <span className={`text-xs font-medium ${d ? "text-amber-400" : "text-purple-600"}`}>
+                                {raid.time}
+                              </span>
                             </div>
-
-                            {/* 관리자 버튼 */}
                             {isAdmin && (
                               <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                                 <button
@@ -360,8 +441,49 @@ export default function FixedRaidsPage() {
                               </div>
                             )}
                           </div>
-                        )
-                      })
+
+                          {/* 슬롯 그리드 (드롭 타겟) */}
+                          <div className={`px-3 pb-3 grid gap-1.5 ${raid.maxPlayers === 8 ? "grid-cols-4" : "grid-cols-2"}`}>
+                            {(raid.slots || []).map(slot => {
+                              const isOver = dragOverSlot?.raidId === raid._id && dragOverSlot?.slotIndex === slot.slotIndex
+                              return (
+                                <div
+                                  key={slot.slotIndex}
+                                  onDragOver={isAdmin && dragData ? (e) => { e.preventDefault(); setDragOverSlot({ raidId: raid._id, slotIndex: slot.slotIndex }) } : undefined}
+                                  onDragLeave={isAdmin ? () => setDragOverSlot(null) : undefined}
+                                  onDrop={isAdmin ? (e) => { e.preventDefault(); handleSlotDrop(raid._id, slot.slotIndex) } : undefined}
+                                  className={`relative flex items-center gap-1 px-1.5 py-1 rounded-lg text-xs border transition-all
+                                    ${isOver
+                                      ? d ? "border-amber-400/60 bg-amber-500/15" : "border-purple-400 bg-purple-50"
+                                      : slot.discordId
+                                        ? slot.isSupporter
+                                          ? d ? "border-blue-500/20 bg-blue-500/10" : "border-blue-100 bg-blue-50"
+                                          : d ? "border-red-500/20 bg-red-500/10" : "border-red-50 bg-red-50/50"
+                                        : d ? "border-white/5 bg-white/[0.02]" : "border-gray-100 bg-gray-50"
+                                    }`}>
+                                  {slot.isSupporter && <Shield size={10} className={`flex-shrink-0 ${d ? "text-blue-400" : "text-blue-500"}`} />}
+                                  <span className={`truncate flex-1 ${
+                                    slot.discordId
+                                      ? d ? "text-gray-200" : "text-gray-700"
+                                      : d ? "text-gray-700" : "text-gray-300"
+                                  }`}>
+                                    {slot.discordId ? (slot.serverNick || "?") : (isOver ? "여기에 놓기" : "빈")}
+                                  </span>
+                                  {isAdmin && slot.discordId && (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleSlotClear(raid._id, slot.slotIndex) }}
+                                      className={`flex-shrink-0 rounded p-0.5 transition-colors
+                                        ${d ? "text-gray-600 hover:text-red-400 hover:bg-red-500/10"
+                                            : "text-gray-300 hover:text-red-500 hover:bg-red-50"}`}>
+                                      <X size={9} />
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
@@ -369,53 +491,80 @@ export default function FixedRaidsPage() {
             })}
           </div>
 
-          {/* 오른쪽: 원정대 캐릭터 패널 */}
-          <div className="w-[210px] flex-shrink-0 space-y-3">
+          {/* 오른쪽: 멤버 패널 */}
+          <div className="w-[220px] flex-shrink-0 space-y-3">
             <div className={`rounded-2xl border overflow-hidden
               ${d ? "border-white/10 bg-white/[0.02]" : "border-purple-100 bg-white"}`}>
               <div className={`px-3 py-2.5 border-b text-xs font-semibold
                 ${d ? "border-white/10 text-gray-400" : "border-purple-100 text-gray-600"}`}>
                 서버 멤버 ({members.length}명)
+                {isAdmin && <span className={`ml-1 font-normal ${d ? "text-gray-600" : "text-gray-400"}`}>드래그로 배치</span>}
               </div>
-              <div className="p-2 space-y-3 max-h-[600px] overflow-y-auto">
+              <div className="p-2 space-y-3 max-h-[640px] overflow-y-auto">
                 {members.length === 0 ? (
                   <p className={`text-xs text-center py-3 ${d ? "text-gray-600" : "text-gray-400"}`}>
                     캐릭터 연동 유저 없음
                   </p>
                 ) : (
-                  members.map(member => (
-                    <div key={member.discordId}>
-                      <p className={`text-xs font-medium mb-1 truncate ${d ? "text-gray-300" : "text-gray-700"}`}>
-                        {member.serverNick}
-                      </p>
-                      <div className="space-y-1">
-                        {(member.characters || []).slice(0, 5).map((char, ci) => (
-                          <div key={ci} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs
-                            ${d ? "bg-white/5" : "bg-gray-50"}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0
-                              ${char.role === "support"
-                                ? d ? "bg-blue-400" : "bg-blue-500"
-                                : d ? "bg-red-400" : "bg-red-500"
-                              }`} />
-                            <span className={`truncate ${d ? "text-gray-300" : "text-gray-700"}`}>{char.name}</span>
-                            <span className={`ml-auto flex-shrink-0 ${d ? "text-gray-500" : "text-gray-400"}`}>
-                              {char.level}
-                            </span>
-                          </div>
-                        ))}
-                        {(member.characters || []).length > 5 && (
-                          <p className={`text-xs text-right ${d ? "text-gray-600" : "text-gray-400"}`}>
-                            +{member.characters.length - 5}개
-                          </p>
-                        )}
+                  members.map(member => {
+                    const filteredChars = (member.characters || [])
+                      .filter(c => c.level >= 1680)
+                      .sort((a, b) => b.level - a.level)
+
+                    if (filteredChars.length === 0) return null
+
+                    return (
+                      <div key={member.discordId}>
+                        <p className={`text-xs font-medium mb-1 truncate ${d ? "text-gray-300" : "text-gray-700"}`}>
+                          {member.serverNick}
+                        </p>
+                        <div className="space-y-1">
+                          {filteredChars.map((char, ci) => {
+                            const isDragging = dragData?.discordId === member.discordId && dragData?.characterName === char.name
+                            return (
+                              <div
+                                key={ci}
+                                draggable={isAdmin}
+                                onDragStart={isAdmin ? () => {
+                                  setDragData({
+                                    discordId: member.discordId,
+                                    serverNick: member.serverNick,
+                                    characterName: char.name,
+                                    characterClass: char.class,
+                                    characterLevel: char.level,
+                                    characterCombatPower: char.combatPower ?? null,
+                                    role: SUPPORTER_CLASSES.includes(char.class) ? "support" : "dealer",
+                                  })
+                                } : undefined}
+                                onDragEnd={isAdmin ? () => { setDragData(null); setDragOverSlot(null) } : undefined}
+                                className={`flex flex-col px-2 py-1.5 rounded-lg text-xs transition-opacity
+                                  ${d ? "bg-white/5" : "bg-gray-50"}
+                                  ${isAdmin ? "cursor-grab active:cursor-grabbing" : ""}
+                                  ${isDragging ? "opacity-40" : "opacity-100"}`}>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0
+                                    ${char.role === "support"
+                                      ? d ? "bg-blue-400" : "bg-blue-500"
+                                      : d ? "bg-red-400" : "bg-red-500"
+                                    }`} />
+                                  <span className={`font-medium truncate ${d ? "text-gray-200" : "text-gray-700"}`}>
+                                    {char.name}
+                                  </span>
+                                </div>
+                                <div className={`pl-3 text-[10px] leading-tight ${d ? "text-gray-500" : "text-gray-400"}`}>
+                                  {char.class} · Lv.{char.level}{char.combatPower ? ` · ${char.combatPower.toLocaleString()}` : ""}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>
 
-            {/* 하단 안내 */}
             <p className={`text-xs leading-relaxed ${d ? "text-gray-600" : "text-gray-400"}`}>
               고정 레이드 관련 문의사항은 서버 관리자에게 문의하세요
             </p>
@@ -434,7 +583,6 @@ export default function FixedRaidsPage() {
             className={`w-full max-w-md max-h-[80vh] overflow-y-auto rounded-2xl border p-5
               ${d ? "bg-[#141824] border-white/15" : "bg-white border-purple-100"}`}>
 
-            {/* 팝업 헤더 */}
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className={`text-base font-bold ${d ? "text-white" : "text-gray-800"}`}>
@@ -456,7 +604,6 @@ export default function FixedRaidsPage() {
               </button>
             </div>
 
-            {/* 슬롯 목록 */}
             <div className="space-y-1.5 mb-4">
               {(selectedRaid.slots || []).map(slot => (
                 <div key={slot.slotIndex}
@@ -467,8 +614,7 @@ export default function FixedRaidsPage() {
                         : d ? "border-red-500/20 bg-red-500/10" : "border-red-100 bg-red-50"
                       : d ? "border-white/5 bg-white/[0.02]" : "border-gray-100 bg-gray-50"
                     }`}>
-                  <span className={`text-xs w-5 text-center font-medium flex-shrink-0
-                    ${d ? "text-gray-500" : "text-gray-400"}`}>
+                  <span className={`text-xs w-5 text-center font-medium flex-shrink-0 ${d ? "text-gray-500" : "text-gray-400"}`}>
                     {slot.slotIndex}
                   </span>
                   {slot.isSupporter && <Shield size={13} className={d ? "text-blue-400 flex-shrink-0" : "text-blue-500 flex-shrink-0"} />}
@@ -489,11 +635,19 @@ export default function FixedRaidsPage() {
                       {slot.isSupporter ? "🛡 서포터 전용" : "빈 슬롯"}
                     </span>
                   )}
+                  {isAdmin && slot.discordId && (
+                    <button
+                      onClick={() => handleSlotClear(selectedRaid._id, slot.slotIndex)}
+                      className={`ml-auto flex-shrink-0 p-1 rounded-lg transition-colors
+                        ${d ? "text-gray-600 hover:text-red-400 hover:bg-red-500/10"
+                            : "text-gray-300 hover:text-red-500 hover:bg-red-50"}`}>
+                      <X size={13} />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
 
-            {/* 팝업 하단 버튼 */}
             <div className="flex gap-2">
               {isAdmin && (
                 <Button
@@ -536,37 +690,24 @@ export default function FixedRaidsPage() {
             </div>
 
             <div className="space-y-3">
-              {/* 레이드 선택 */}
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
-                  레이드 *
-                </label>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>레이드 *</label>
                 <select
                   value={createForm.raidKey}
                   onChange={e => {
                     const raidInfo = RAID_LIST.find(r => r.key === e.target.value)
-                    setCreateForm(prev => ({
-                      ...prev,
-                      raidKey: e.target.value,
-                      difficulty: "",
-                      maxPlayers: raidInfo?.maxPlayers || 8,
-                    }))
+                    setCreateForm(prev => ({ ...prev, raidKey: e.target.value, difficulty: "", maxPlayers: raidInfo?.maxPlayers || 8 }))
                   }}
                   className={selectCls}>
                   <option value="">레이드 선택</option>
                   {RAID_LIST.map(r => (
-                    <option key={r.key} value={r.key}>
-                      {r.raidAlias} ({r.raidTag}) {r.maxPlayers}인
-                    </option>
+                    <option key={r.key} value={r.key}>{r.raidAlias} ({r.raidTag}) {r.maxPlayers}인</option>
                   ))}
                 </select>
               </div>
 
-              {/* 난이도 */}
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
-                  난이도 *
-                </label>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>난이도 *</label>
                 <select
                   value={createForm.difficulty}
                   onChange={e => setCreateForm(prev => ({ ...prev, difficulty: e.target.value }))}
@@ -579,11 +720,8 @@ export default function FixedRaidsPage() {
                 </select>
               </div>
 
-              {/* 숙련도 */}
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
-                  숙련도
-                </label>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>숙련도</label>
                 <div className="flex gap-1.5 flex-wrap">
                   {SKILL_CHOICES.map(s => (
                     <button
@@ -600,11 +738,8 @@ export default function FixedRaidsPage() {
                 </div>
               </div>
 
-              {/* 요일 */}
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
-                  요일 *
-                </label>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>요일 *</label>
                 <div className="flex gap-1.5">
                   {WEEKDAYS.map((label, i) => (
                     <button
@@ -621,11 +756,8 @@ export default function FixedRaidsPage() {
                 </div>
               </div>
 
-              {/* 시간 */}
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
-                  시간 * (HH:MM)
-                </label>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>시간 * (HH:MM)</label>
                 <input
                   type="time"
                   value={createForm.time}
@@ -634,11 +766,8 @@ export default function FixedRaidsPage() {
                 />
               </div>
 
-              {/* 인원 */}
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
-                  인원
-                </label>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>인원</label>
                 <div className="flex gap-2">
                   {[4, 8].map(n => (
                     <button
@@ -656,7 +785,6 @@ export default function FixedRaidsPage() {
               </div>
             </div>
 
-            {/* 생성 버튼 */}
             <Button
               disabled={creating || !createForm.raidKey || !createForm.difficulty || !createForm.time}
               onClick={handleCreate}
@@ -670,6 +798,23 @@ export default function FixedRaidsPage() {
           </Card>
         </div>
       )}
+
+      {/* ── 토스트 알림 ── */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[60] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all
+            ${toast.type === "success"
+              ? d ? "bg-green-500/90 text-white" : "bg-green-500 text-white"
+              : d ? "bg-red-500/90 text-white" : "bg-red-500 text-white"
+            }`}>
+          <span>{toast.type === "success" ? "✅" : "❌"}</span>
+          {toast.message}
+          <button onClick={() => setToast(null)} className="ml-1 opacity-70 hover:opacity-100">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
     </DashboardLayout>
   )
 }
