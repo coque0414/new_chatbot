@@ -1,7 +1,8 @@
 import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import GuildSettings from "@/lib/models/GuildSettings"
-import { sendRaidDM, buildNotifyEmbed } from "@/lib/discordDM"
+import FixedRaid from "@/lib/models/FixedRaid"
+import { sendRaidDM, buildNotifyEmbed, buildFixedRaidNotifyEmbed } from "@/lib/discordDM"
 
 const DISCORD_API = "https://discord.com/api/v10"
 
@@ -195,6 +196,123 @@ export async function GET(request) {
     // 성공/실패 관계없이 DB는 항상 정리
     await Raid.findByIdAndUpdate(raid._id, { $unset: { voiceChannelId: "" } })
     deleteResults.push(raid._id)
+  }
+
+  // ── 3. 수요일 오전 10시 고정 레이드 주간 공지 ──────────────────────────
+  const isWednesday = nowKST.getDay() === 3
+  const kstHour = nowKST.getHours()
+  const kstMin = nowKST.getMinutes()
+  const isNearTen = kstHour === 10 && kstMin < 10
+
+  if (isWednesday && isNearTen) {
+    const wed = new Date(nowKST)
+    wed.setHours(0, 0, 0, 0)
+
+    const allFixedRaids = await FixedRaid.find({ notifyEnabled: true })
+
+    const byGuild = {}
+    for (const fr of allFixedRaids) {
+      if (!byGuild[fr.guildId]) byGuild[fr.guildId] = []
+      byGuild[fr.guildId].push(fr)
+    }
+
+    const WEEKDAY_NAMES = ["수", "목", "금", "토", "일", "월", "화"]
+
+    for (const [guildId, raids] of Object.entries(byGuild)) {
+      const settings = await GuildSettings.findOne({ guildId })
+      if (!settings?.announcementChannelId) continue
+
+      const byWeekday = {}
+      for (const r of raids) {
+        if (!byWeekday[r.weekday]) byWeekday[r.weekday] = []
+        byWeekday[r.weekday].push(r)
+      }
+
+      let lines = ["📌 **이번 주 고정 레이드 일정 안내**\n━━━━━━━━━━━━━━━━━━━━"]
+
+      for (let wd = 0; wd <= 6; wd++) {
+        const dayRaids = byWeekday[wd]
+        if (!dayRaids?.length) continue
+
+        const d = new Date(wed)
+        d.setDate(wed.getDate() + wd)
+        const mm = String(d.getMonth() + 1).padStart(2, "0")
+        const dd = String(d.getDate()).padStart(2, "0")
+        const dateLabel = `${mm}/${dd}`
+
+        lines.push(`\n📅 **${WEEKDAY_NAMES[wd]} ${dateLabel}**`)
+
+        const sorted = dayRaids.sort((a, b) => a.time.localeCompare(b.time))
+        for (const r of sorted) {
+          const diffLabel = r.difficulty_level ? ` (${r.difficulty_level})` : ""
+          const filled = r.slots.filter(s => s.discordId)
+          const members = filled.length > 0
+            ? filled.map(s => s.serverNick || s.characterName).join(", ")
+            : "미정"
+          lines.push(`⚔️ ${r.raidAlias} ${r.difficulty}${diffLabel} · ${r.time}`)
+          lines.push(`👥 ${members}`)
+        }
+      }
+
+      lines.push("\n━━━━━━━━━━━━━━━━━━━━")
+      lines.push("자세한 일정 및 참가자 명단은")
+      lines.push("👉 웹 대시보드에서 확인하세요")
+      lines.push("https://loaraid-discobot.vercel.app/fixed-raids")
+
+      try {
+        await fetch(
+          `${DISCORD_API}/channels/${settings.announcementChannelId}/messages`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ content: lines.join("\n") }),
+          }
+        )
+      } catch (e) {
+        console.error(`[Scheduler] 고정 레이드 공지 실패 (${guildId}):`, e.message)
+      }
+    }
+  }
+
+  // ── 4. 고정 레이드 당일 DM 알림 (30분 전 ±5분) ─────────────────────────
+  const todayWd = (() => {
+    const day = nowKST.getDay() // 0=일 1=월 2=화 3=수 4=목 5=금 6=토
+    const map = [4, 5, 6, 0, 1, 2, 3]
+    return map[day]
+  })()
+
+  const todayFixedRaids = await FixedRaid.find({
+    weekday: todayWd,
+    notifyEnabled: true,
+  })
+
+  for (const fr of todayFixedRaids) {
+    const [hh, mm] = fr.time.split(":").map(Number)
+    const raidTime = new Date(nowKST)
+    raidTime.setHours(hh, mm, 0, 0)
+    const diffMin = (raidTime - nowKST) / 60000
+
+    if (diffMin < 25 || diffMin > 35) continue
+
+    const filledSlots = fr.slots.filter(s => s.discordId)
+    if (filledSlots.length === 0) continue
+
+    const todayDate = new Date(nowKST)
+    const raidDateStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`
+
+    const embed = buildFixedRaidNotifyEmbed(fr, raidDateStr)
+
+    for (const slot of filledSlots) {
+      try {
+        await sendRaidDM(slot.discordId, embed, {})
+      } catch (e) {
+        console.error(`[Scheduler] 고정 레이드 DM 실패 (${slot.discordId}):`, e.message)
+      }
+      await new Promise(r => setTimeout(r, 300))
+    }
   }
 
   return Response.json({

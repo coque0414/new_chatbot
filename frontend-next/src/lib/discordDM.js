@@ -141,6 +141,29 @@ export function buildTrainRaidLaunchEmbed(trainRaid) {
   }
 }
 
+// 고정 레이드 당일 DM 알림 embed 생성
+export function buildFixedRaidNotifyEmbed(fixedRaid, raidDate) {
+  return {
+    title: `📌 오늘 고정 레이드가 있습니다!`,
+    description: `${fixedRaid.raidAlias} ${fixedRaid.difficulty}${fixedRaid.difficulty_level ? ` (${fixedRaid.difficulty_level})` : ""}`,
+    color: 0x9B59B6,
+    fields: [
+      { name: "일정", value: `${raidDate} ${fixedRaid.time}`, inline: true },
+      { name: "인원", value: `${fixedRaid.maxPlayers}명`, inline: true },
+      {
+        name: "참가자",
+        value: fixedRaid.slots
+          .filter(s => s.discordId)
+          .map(s => `${s.role === "support" ? "🛡️" : "⚔️"} ${s.serverNick} (${s.characterName})`)
+          .join("\n") || "없음",
+        inline: false,
+      },
+    ],
+    footer: { text: "LostArk 고정 레이드" },
+    timestamp: new Date().toISOString(),
+  }
+}
+
 /**
  * 레이드 N분 전 알림 임베드 생성 (scheduler용)
  */
