@@ -5,15 +5,6 @@ import UserCharacters from "@/lib/models/UserCharacters"
 import { SUPPORTER_CLASSES } from "@/lib/lostarkData"
 
 const DISCORD_API = "https://discord.com/api/v10"
-const BATCH_SIZE = 10
-
-async function fetchMember(guildId, discordId, token) {
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordId}`, {
-    headers: { Authorization: `Bot ${token}` },
-  })
-  if (!res.ok) return null
-  return res.json()
-}
 
 export async function GET(request) {
   try {
@@ -24,42 +15,51 @@ export async function GET(request) {
     const guildId = searchParams.get("guildId")
     if (!guildId) return Response.json({ error: "guildId 필수" }, { status: 400 })
 
-    await connectDB()
-    const allUserChars = await UserCharacters.find({})
     const token = process.env.DISCORD_BOT_TOKEN
 
+    const guildMembersRes = await fetch(
+      `${DISCORD_API}/guilds/${guildId}/members?limit=1000`,
+      { headers: { Authorization: `Bot ${token}` } }
+    )
+    if (!guildMembersRes.ok) {
+      return Response.json({ error: "서버 멤버 조회 실패" }, { status: 500 })
+    }
+    const guildMembers = await guildMembersRes.json()
+
+    const memberMap = new Map(
+      guildMembers.map(m => [m.user.id, m])
+    )
+
+    await connectDB()
+    const allUserChars = await UserCharacters.find({})
+
     const members = []
+    for (const userChar of allUserChars) {
+      const member = memberMap.get(userChar.discordId)
+      if (!member) continue
 
-    // 최대 10명씩 배치로 Discord API 병렬 호출
-    for (let i = 0; i < allUserChars.length; i += BATCH_SIZE) {
-      const batch = allUserChars.slice(i, i + BATCH_SIZE)
-      const results = await Promise.all(
-        batch.map(async (userChar) => {
-          const member = await fetchMember(guildId, userChar.discordId, token)
-          if (!member) return null
+      const serverNick = member.nick ?? member.user?.username ?? userChar.discordId
 
-          const serverNick = member.nick ?? member.user?.username ?? userChar.discordId
+      let allChars = []
+      if (userChar.accounts?.length > 0) {
+        userChar.toObject().accounts.forEach(acc =>
+          (acc.characters || []).forEach(c => allChars.push(c))
+        )
+      } else {
+        allChars = (userChar.toObject().characters || [])
+      }
 
-          // accounts 구조 또는 레거시 characters 구조 통합
-          let allChars = []
-          if (userChar.accounts?.length > 0) {
-            userChar.accounts.forEach(acc => (acc.characters || []).forEach(c => allChars.push(c)))
-          } else {
-            allChars = userChar.characters || []
-          }
+      const characters = allChars.map(c => ({
+        name: c.name,
+        class: c.class,
+        level: c.level,
+        combatPower: c.combatPower ?? null,
+        role: SUPPORTER_CLASSES.includes(c.class) ? "support" : "dealer",
+      }))
 
-          const characters = allChars.map(c => ({
-            name: c.name,
-            class: c.class,
-            level: c.level,
-            combatPower: c.combatPower ?? null,
-            role: SUPPORTER_CLASSES.includes(c.class) ? "support" : "dealer",
-          }))
+      if (characters.length === 0) continue
 
-          return { discordId: userChar.discordId, serverNick, characters }
-        })
-      )
-      results.filter(Boolean).forEach(m => members.push(m))
+      members.push({ discordId: userChar.discordId, serverNick, characters })
     }
 
     return Response.json({ members })
