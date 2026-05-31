@@ -118,6 +118,7 @@ export default function FixedRaidsPage() {
         setMembers(membersData.members || [])
         setIsAdmin(adminData.isAdmin || false)
       })
+
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [selectedGuildId])
@@ -307,6 +308,11 @@ export default function FixedRaidsPage() {
           {isAdmin && (
             <Badge className={`text-xs flex items-center gap-1 ${d ? "bg-blue-500/15 text-blue-400 border-blue-500/30" : "bg-blue-50 text-blue-600 border-blue-200"}`}>
               <Shield size={11} /> 관리자 전용
+            </Badge>
+          )}
+          {!isAdmin && selectedGuildId && (
+            <Badge className={`text-xs ${d ? "bg-gray-500/15 text-gray-400 border-gray-500/30" : "bg-gray-100 text-gray-500 border-gray-200"}`}>
+              👁️ 읽기 전용
             </Badge>
           )}
         </div>
