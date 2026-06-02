@@ -273,7 +273,7 @@ export default function LandingPage() {
       {/* 푸터 */}
       <footer className={`relative z-10 border-t px-8 py-8 text-center
         ${d ? "border-white/5 text-gray-600" : "border-purple-100 text-gray-400"}`}>
-        <p className="text-xs tracking-widest uppercase mb-3">© 2026 미니미 (LostArk Raid Bot)</p>
+        <p className="text-xs tracking-widest uppercase mb-3">© 2026 로미니 (LostArk Raid Bot)</p>
         <div className="flex justify-center gap-6">
           <a href="/privacy"
             className={`text-xs transition-colors ${d ? "text-gray-600 hover:text-gray-400" : "text-gray-400 hover:text-gray-600"}`}>

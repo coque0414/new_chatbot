@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 export const metadata = {
-  title: "개인정보처리방침 | 미니미",
+  title: "개인정보처리방침 | 로미니",
 }
 
 export default function PrivacyPage() {
@@ -19,12 +19,12 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-semibold text-white mb-3">1. 개요</h2>
             <p>
-              미니미 (LostArk Raid Bot, 이하 "서비스")는 이용자의 개인정보를 소중히 여기며,
+              로미니 (LostArk Raid Bot, 이하 "서비스")는 이용자의 개인정보를 소중히 여기며,
               관련 법령을 준수하여 개인정보를 처리합니다. 본 방침은 서비스가 수집·이용·보관·파기하는
               개인정보의 처리 기준을 안내합니다.
             </p>
             <ul className="mt-3 space-y-1 text-gray-400">
-              <li>· 서비스명: 미니미 (LostArk Raid Bot)</li>
+              <li>· 서비스명: 로미니 (LostArk Raid Bot)</li>
               <li>· 운영자: 이경민</li>
             </ul>
           </section>
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-white/5 text-center">
-          <p className="text-xs text-gray-600">© 2026 미니미 (LostArk Raid Bot)</p>
+          <p className="text-xs text-gray-600">© 2026 로미니 (LostArk Raid Bot)</p>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import Link from "next/link"
 
 export const metadata = {
-  title: "이용약관 | 미니미",
+  title: "이용약관 | 로미니",
 }
 
 export default function TermsPage() {
@@ -19,7 +19,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-base font-semibold text-white mb-3">제1조 (목적)</h2>
             <p className="text-gray-400">
-              본 약관은 미니미 (LostArk Raid Bot, 이하 "서비스")의 이용 조건 및 절차,
+              본 약관은 로미니 (LostArk Raid Bot, 이하 "서비스")의 이용 조건 및 절차,
               운영자와 이용자 간의 권리·의무 및 책임 사항을 규정함을 목적으로 합니다.
             </p>
           </section>
@@ -27,7 +27,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-base font-semibold text-white mb-3">제2조 (서비스 정의)</h2>
             <ul className="space-y-2 text-gray-400">
-              <li>· 서비스명: 미니미 (LostArk Raid Bot)</li>
+              <li>· 서비스명: 로미니 (LostArk Raid Bot)</li>
               <li>· 운영자: 이경민</li>
               <li>· 서비스 목적: 로스트아크 레이드 모집 및 파티 관리를 Discord와 연동하여 제공</li>
               <li>· 서비스 URL: loaraid-discobot.vercel.app</li>
@@ -105,7 +105,7 @@ export default function TermsPage() {
         </div>
 
         <div className="mt-16 pt-8 border-t border-white/5 text-center">
-          <p className="text-xs text-gray-600">© 2026 미니미 (LostArk Raid Bot)</p>
+          <p className="text-xs text-gray-600">© 2026 로미니 (LostArk Raid Bot)</p>
         </div>
       </div>
     </div>

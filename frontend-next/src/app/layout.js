@@ -10,14 +10,14 @@ const cinzel = Cinzel({
 })
 
 export const metadata = {
-  title: "미니미 | 로스트아크 레이드 모집 봇",
-  description: "로스트아크 레이드 모집을 Discord 봇과 웹 대시보드로 편리하게 관리하세요. 레이드 예약, 참가자 관리, 캐릭터 연동을 한 곳에서.",
-  keywords: "로스트아크, 레이드 모집, 디스코드 봇, 레이드 예약, 로아 봇",
+  title: "로미니 | 로스트아크 레이드 모집 봇",
+  description: "로스트아크 레이드 모집을 Discord 봇과 웹 대시보드로 편리하게 관리하세요. 레이드 예약, 고정 레이드 관리, 참가자 관리를 한 곳에서.",
+  keywords: "로스트아크, 레이드 모집, 디스코드 봇, 로미니, 레이드 예약, 로아 봇, 고정 레이드",
   openGraph: {
-    title: "미니미 | 로스트아크 레이드 모집 봇",
+    title: "로미니 | 로스트아크 레이드 모집 봇",
     description: "로스트아크 레이드 모집을 Discord 봇과 웹 대시보드로 편리하게 관리하세요.",
     url: "https://loaraid-discobot.vercel.app",
-    siteName: "미니미",
+    siteName: "로미니",
     locale: "ko_KR",
     type: "website",
   },
