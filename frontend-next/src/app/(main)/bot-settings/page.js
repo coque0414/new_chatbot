@@ -42,6 +42,15 @@ export default function BotSettingsPage() {
   const [creating, setCreating] = useState(false)
   const [createResult, setCreateResult] = useState(null)
 
+  // 후원
+  const [accountInfo, setAccountInfo] = useState(null)
+  const [donationAmountType, setDonationAmountType] = useState(null)
+  const [donationCustomInput, setDonationCustomInput] = useState("")
+  const [donationSenderName, setDonationSenderName] = useState("")
+  const [donationMessage, setDonationMessage] = useState("")
+  const [donationSubmitting, setDonationSubmitting] = useState(false)
+  const [donationResult, setDonationResult] = useState(null)
+
   // 레이드 공고 정리
   const [cleanupRaids, setCleanupRaids] = useState(null)   // null=미조회, []=조회완료
   const [cleanupLoading, setCleanupLoading] = useState(false)
@@ -107,6 +116,37 @@ export default function BotSettingsPage() {
     }
   }
 
+  const handleDonationSubmit = async () => {
+    const amount = donationAmountType === "custom"
+      ? parseInt(donationCustomInput, 10)
+      : parseInt(donationAmountType, 10)
+    if (!amount || amount < 2000) return
+    if (!donationSenderName.trim()) return
+    setDonationSubmitting(true)
+    setDonationResult(null)
+    try {
+      const res = await fetch("/api/donation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senderName: donationSenderName, amount, message: donationMessage }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setDonationResult({ success: true })
+        setDonationAmountType(null)
+        setDonationCustomInput("")
+        setDonationSenderName("")
+        setDonationMessage("")
+      } else {
+        setDonationResult({ success: false, error: data.error })
+      }
+    } catch (e) {
+      setDonationResult({ success: false, error: e.message })
+    } finally {
+      setDonationSubmitting(false)
+    }
+  }
+
   const resetCleanup = () => {
     setCleanupRaids(null)
     setCleanupChecked(new Set())
@@ -129,7 +169,13 @@ export default function BotSettingsPage() {
   }, [status, router])
 
   useEffect(() => {
-    if (status === "authenticated") loadGuildsAndSettings()
+    if (status === "authenticated") {
+      loadGuildsAndSettings()
+      fetch("/api/donation/account")
+        .then(r => r.json())
+        .then(data => { if (data.bank) setAccountInfo(data) })
+        .catch(() => {})
+    }
   }, [status])
 
   const loadGuildsAndSettings = async () => {
@@ -871,6 +917,127 @@ export default function BotSettingsPage() {
                 취소
               </button>
             </div>
+          )}
+        </Card>
+
+        {/* ── 개발자 후원하기 ──────────────────────────────── */}
+        <Card className={`border p-6 mt-6 space-y-5
+          ${d ? "bg-white/[0.03] border-white/10" : "bg-white border-purple-100"}`}>
+          <div>
+            <h2 className="font-bold text-base mb-1">☕ 개발자 후원하기</h2>
+            <p className={`text-xs ${d ? "text-gray-400" : "text-gray-500"}`}>
+              미니미 봇 개발을 응원해주세요! 후원금은 서버 운영비와 서비스 개선에 사용됩니다.
+            </p>
+          </div>
+
+          {/* 계좌 정보 */}
+          {accountInfo && (
+            <div className={`px-4 py-3 rounded-xl border text-sm space-y-1
+              ${d ? "bg-white/5 border-white/10" : "bg-purple-50/50 border-purple-100"}`}>
+              <p className={`text-xs font-semibold ${d ? "text-gray-400" : "text-gray-500"}`}>입금 계좌</p>
+              <p className={`font-medium ${d ? "text-white" : "text-gray-800"}`}>
+                {accountInfo.bank} · {accountInfo.accountName}
+              </p>
+              <p className={`font-mono text-base tracking-wider ${d ? "text-amber-400" : "text-purple-600"}`}>
+                {accountInfo.accountNumber}
+              </p>
+            </div>
+          )}
+
+          {donationResult?.success ? (
+            <div className={`px-4 py-3 rounded-xl border text-sm
+              ${d ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+              ✅ 후원 신청이 완료되었습니다! 입금 확인 후 감사 메시지를 보내드립니다.
+            </div>
+          ) : (
+            <>
+              {/* 금액 선택 */}
+              <div>
+                <p className={`text-xs font-medium mb-2 ${d ? "text-gray-400" : "text-gray-600"}`}>후원 금액</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { type: "2000", label: "커피 1잔", sub: "₩2,000" },
+                    { type: "4000", label: "커피 2잔", sub: "₩4,000" },
+                    { type: "6000", label: "커피 3잔", sub: "₩6,000" },
+                    { type: "custom", label: "직접입력", sub: "" },
+                  ].map(opt => (
+                    <button
+                      key={opt.type}
+                      onClick={() => setDonationAmountType(opt.type)}
+                      className={`flex flex-col items-center px-2 py-2.5 rounded-xl border text-xs transition-all
+                        ${donationAmountType === opt.type
+                          ? d ? "border-amber-500/60 bg-amber-500/15 text-amber-400" : "border-purple-400 bg-purple-50 text-purple-700"
+                          : d ? "border-white/10 text-gray-400 hover:bg-white/5" : "border-purple-100 text-gray-500 hover:bg-purple-50"
+                        }`}>
+                      <span className="font-medium">{opt.label}</span>
+                      {opt.sub && <span className={`mt-0.5 ${d ? "text-gray-500" : "text-gray-400"}`}>{opt.sub}</span>}
+                    </button>
+                  ))}
+                </div>
+                {donationAmountType === "custom" && (
+                  <div className="mt-2 relative">
+                    <input
+                      type="number"
+                      min={2000}
+                      step={1000}
+                      value={donationCustomInput}
+                      onChange={e => setDonationCustomInput(e.target.value)}
+                      placeholder="최소 2,000원"
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* 입금자명 */}
+              <div>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
+                  입금자명 *
+                </label>
+                <input
+                  type="text"
+                  value={donationSenderName}
+                  onChange={e => setDonationSenderName(e.target.value)}
+                  placeholder="홍길동"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* 응원 메시지 */}
+              <div>
+                <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
+                  응원 메시지 (선택)
+                </label>
+                <input
+                  type="text"
+                  value={donationMessage}
+                  onChange={e => setDonationMessage(e.target.value)}
+                  placeholder="응원합니다!"
+                  className={inputClass}
+                />
+              </div>
+
+              {donationResult?.error && (
+                <p className="text-xs text-red-400">{donationResult.error}</p>
+              )}
+
+              <Button
+                disabled={
+                  !donationAmountType ||
+                  (donationAmountType === "custom" && (!donationCustomInput || parseInt(donationCustomInput) < 2000)) ||
+                  !donationSenderName.trim() ||
+                  donationSubmitting
+                }
+                onClick={handleDonationSubmit}
+                className={`w-full py-2.5 text-sm font-bold
+                  ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}
+                  ${donationSubmitting ? "opacity-60" : ""}`}>
+                {donationSubmitting
+                  ? <span className="flex items-center gap-2"><RefreshCw size={13} className="animate-spin" />처리 중...</span>
+                  : "후원하기"
+                }
+              </Button>
+            </>
           )}
         </Card>
       </div>
