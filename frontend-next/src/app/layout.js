@@ -1,4 +1,5 @@
 import { Cinzel } from "next/font/google"
+import Script from "next/script"
 import "./globals.css"
 import Providers from "@/components/providers"
 
@@ -32,6 +33,12 @@ export default function RootLayout({ children }) {
         <Providers>
           {children}
         </Providers>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8018908047425988"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   )
