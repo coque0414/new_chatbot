@@ -468,13 +468,21 @@ export default function FixedRaidsPage() {
                                         : d ? "border-white/5 bg-white/[0.02]" : "border-gray-100 bg-gray-50"
                                     }`}>
                                   {slot.isSupporter && <Shield size={10} className={`flex-shrink-0 ${d ? "text-blue-400" : "text-blue-500"}`} />}
-                                  <span className={`truncate flex-1 ${
-                                    slot.discordId
-                                      ? d ? "text-gray-200" : "text-gray-700"
-                                      : d ? "text-gray-700" : "text-gray-300"
-                                  }`}>
-                                    {slot.discordId ? (slot.serverNick || "?") : (isOver ? "여기에 놓기" : "빈")}
-                                  </span>
+                                  {slot.discordId ? (
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                      <span className={`truncate text-xs font-medium ${d ? "text-gray-200" : "text-gray-700"}`}>
+                                        {slot.characterName || slot.serverNick || "?"}
+                                      </span>
+                                      <span className="truncate text-[10px] opacity-70">
+                                        {[slot.characterClass, slot.characterLevel ? `Lv.${slot.characterLevel}` : null]
+                                          .filter(Boolean).join(" · ")}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className={`truncate flex-1 ${d ? "text-gray-700" : "text-gray-300"}`}>
+                                      {isOver ? "여기에 놓기" : slot.isSupporter ? "🛡 서포터 전용" : "빈 슬롯"}
+                                    </span>
+                                  )}
                                   {isAdmin && slot.discordId && (
                                     <button
                                       onClick={(e) => { e.stopPropagation(); handleSlotClear(raid._id, slot.slotIndex) }}
@@ -627,14 +635,13 @@ export default function FixedRaidsPage() {
                   {slot.discordId ? (
                     <div className="flex-1 min-w-0">
                       <span className={`font-medium truncate block ${d ? "text-white" : "text-gray-800"}`}>
-                        {slot.serverNick || slot.discordId}
+                        {slot.characterName || slot.serverNick || slot.discordId}
                       </span>
-                      {slot.characterName && (
-                        <span className={`text-xs ${d ? "text-gray-400" : "text-gray-500"}`}>
-                          {slot.characterName} ({slot.characterClass}) Lv.{slot.characterLevel}
-                          {slot.characterCombatPower ? ` / ${slot.characterCombatPower.toLocaleString()}` : ""}
-                        </span>
-                      )}
+                      <span className={`text-xs ${d ? "text-gray-400" : "text-gray-500"}`}>
+                        {[slot.characterClass, slot.characterLevel ? `Lv.${slot.characterLevel}` : null, slot.characterCombatPower ? slot.characterCombatPower.toLocaleString() : null]
+                          .filter(Boolean).join(" · ")}
+                        {slot.serverNick ? ` (${slot.serverNick})` : ""}
+                      </span>
                     </div>
                   ) : (
                     <span className={`text-sm ${d ? "text-gray-600" : "text-gray-400"}`}>
