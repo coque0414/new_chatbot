@@ -52,6 +52,14 @@ export async function POST(request) {
     const isAdmin = await checkAdminPermission(session, guildId)
     if (!isAdmin) return Response.json({ error: "관리자 권한이 필요합니다." }, { status: 403 })
 
+    const existingCount = await FixedRaid.countDocuments({ guildId })
+    if (existingCount >= 15) {
+      return Response.json(
+        { error: "서버당 고정 레이드는 최대 15개까지 등록 가능합니다." },
+        { status: 400 }
+      )
+    }
+
     const slots = Array.from({ length: maxPlayers }, (_, i) => ({
       slotIndex: i + 1,
       isSupporter: (i === 3 || i === 7),
