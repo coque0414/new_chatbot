@@ -279,8 +279,9 @@ export async function GET(request) {
 
   // ── 4. 고정 레이드 당일 DM 일괄 발송 (자정 00시 ±10분) ──────────────────────
   const isMidnight = kstHour === 0 && kstMin < 10
+  const forceTest = searchParams.get("forceFixedDm") === "1"
 
-  if (isMidnight) {
+  if (isMidnight || forceTest) {
     const todayWd = (() => {
       const day = nowKST.getDay()
       const map = [4, 5, 6, 0, 1, 2, 3]
