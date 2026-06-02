@@ -249,12 +249,17 @@ export async function GET(request) {
         const sorted = dayRaids.sort((a, b) => a.time.localeCompare(b.time))
         for (const r of sorted) {
           const diffLabel = r.difficulty_level ? ` (${r.difficulty_level})` : ""
-          const filled = r.slots.filter(s => s.discordId)
-          const members = filled.length > 0
-            ? filled.map(s => s.serverNick || s.characterName).join(", ")
-            : "미정"
+          const slotStr = Array.from({ length: r.maxPlayers }, (_, i) => {
+            const slot = r.slots.find(s => s.slotIndex === i + 1)
+            if (slot?.discordId && slot.characterName) {
+              return `${slot.characterName}(${slot.characterClass || "?"})`
+            } else if (slot?.discordId) {
+              return slot.serverNick || "?"
+            }
+            return "공석"
+          }).join(", ")
           lines.push(`⚔️ ${r.raidAlias} ${r.difficulty}${diffLabel} · ${r.time}`)
-          lines.push(`👥 ${members}`)
+          lines.push(`👥 ${slotStr}`)
         }
       }
 
