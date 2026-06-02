@@ -204,7 +204,9 @@ export async function GET(request) {
   const kstMin = nowKST.getMinutes()
   const isNearTen = kstHour === 10 && kstMin < 10
 
-  if (isWednesday && isNearTen) {
+  const forceFixedNotify = searchParams.get("forceFixedNotify") === "1"
+
+  if ((isWednesday && isNearTen) || forceFixedNotify) {
     const wed = new Date(nowKST)
     wed.setHours(0, 0, 0, 0)
 
@@ -279,9 +281,9 @@ export async function GET(request) {
 
   // ── 4. 고정 레이드 당일 DM 일괄 발송 (자정 00시 ±10분) ──────────────────────
   const isMidnight = kstHour === 0 && kstMin < 10
-  const forceTest = searchParams.get("forceFixedDm") === "1"
+  const forceFixedDm = searchParams.get("forceFixedDm") === "1"
 
-  if (isMidnight || forceTest) {
+  if (isMidnight || forceFixedDm) {
     const todayWd = (() => {
       const day = nowKST.getDay()
       const map = [4, 5, 6, 0, 1, 2, 3]
