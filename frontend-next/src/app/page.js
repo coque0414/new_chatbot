@@ -273,7 +273,17 @@ export default function LandingPage() {
       {/* 푸터 */}
       <footer className={`relative z-10 border-t px-8 py-8 text-center
         ${d ? "border-white/5 text-gray-600" : "border-purple-100 text-gray-400"}`}>
-        <p className="text-xs tracking-widest uppercase">© 2026 LostArk 레이드</p>
+        <p className="text-xs tracking-widest uppercase mb-3">© 2026 미니미 (LostArk Raid Bot)</p>
+        <div className="flex justify-center gap-6">
+          <a href="/privacy"
+            className={`text-xs transition-colors ${d ? "text-gray-600 hover:text-gray-400" : "text-gray-400 hover:text-gray-600"}`}>
+            개인정보처리방침
+          </a>
+          <a href="/terms"
+            className={`text-xs transition-colors ${d ? "text-gray-600 hover:text-gray-400" : "text-gray-400 hover:text-gray-600"}`}>
+            이용약관
+          </a>
+        </div>
       </footer>
     </div>
   )

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+Disallow: /api/
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /raids/
+Disallow: /fixed-raids
+Disallow: /bot-settings
+Disallow: /characters
+
+Sitemap: https://loaraid-discobot.vercel.app/sitemap.xml
