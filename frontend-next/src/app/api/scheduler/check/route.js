@@ -277,10 +277,10 @@ export async function GET(request) {
     }
   }
 
-  // ── 4. 고정 레이드 당일 DM 일괄 발송 (오전 9시 ±10분) ──────────────────────
-  const isNineAM = kstHour === 9 && kstMin < 10
+  // ── 4. 고정 레이드 당일 DM 일괄 발송 (자정 00시 ±10분) ──────────────────────
+  const isMidnight = kstHour === 0 && kstMin < 10
 
-  if (isNineAM) {
+  if (isMidnight) {
     const todayWd = (() => {
       const day = nowKST.getDay()
       const map = [4, 5, 6, 0, 1, 2, 3]
