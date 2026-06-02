@@ -24,6 +24,10 @@ const FixedRaidSchema = new mongoose.Schema({
   maxPlayers:       { type: Number, required: true },
   slots:            { type: [SlotSchema], default: [] },
   notifyEnabled:    { type: Boolean, default: true },
+  nextWeekOverride: {
+    time:   { type: String,  default: null },
+    active: { type: Boolean, default: false },
+  },
 }, { timestamps: true })
 
 export default mongoose.models.FixedRaid

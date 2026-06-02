@@ -185,6 +185,8 @@ export default function BotSettingsPage() {
       createChannelId:         settings.createChannelId         || "",
       createChannelName:       settings.createChannelName       || "",
       voiceChannelEnabled:     settings.voiceChannelEnabled !== false,
+      fixedRaidDmEnabled:     settings.fixedRaidDmEnabled !== false,
+      fixedRaidNotifyEnabled: settings.fixedRaidNotifyEnabled !== false,
     }
   }
 
@@ -215,6 +217,8 @@ export default function BotSettingsPage() {
           createChannelId:        draft.createChannelId        || null,
           createChannelName:      draft.createChannelName      || null,
           voiceChannelEnabled:    draft.voiceChannelEnabled !== false,
+          fixedRaidDmEnabled:     draft.fixedRaidDmEnabled !== false,
+          fixedRaidNotifyEnabled: draft.fixedRaidNotifyEnabled !== false,
         }),
       })
       const data = await res.json()
@@ -515,6 +519,49 @@ export default function BotSettingsPage() {
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform
                                 ${draft.voiceChannelEnabled !== false ? "translate-x-5" : "translate-x-0"}`} />
                             </button>
+                          </div>
+
+                          {/* 고정 레이드 알림 */}
+                          <div className={`border-t pt-4 ${d ? "border-white/10" : "border-purple-100"}`}>
+                            <p className={`text-xs font-semibold mb-3 ${d ? "text-gray-400" : "text-gray-600"}`}>
+                              고정 레이드 알림
+                            </p>
+                            <div className="space-y-3">
+                              <div className={`flex items-center justify-between px-4 py-3 rounded-xl border
+                                ${d ? "bg-white/[0.02] border-white/10" : "bg-purple-50/30 border-purple-100"}`}>
+                                <div>
+                                  <p className={`text-sm font-medium ${d ? "text-gray-200" : "text-gray-700"}`}>📩 당일 개인 DM 알림</p>
+                                  <p className={`text-xs mt-0.5 ${d ? "text-gray-500" : "text-gray-400"}`}>고정 레이드 당일 참가자에게 오늘의 레이드 일정을 DM으로 발송합니다</p>
+                                </div>
+                                <button
+                                  onClick={() => updateDraft(guild.id, "fixedRaidDmEnabled", draft.fixedRaidDmEnabled === false)}
+                                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0
+                                    ${draft.fixedRaidDmEnabled !== false
+                                      ? d ? "bg-amber-500" : "bg-purple-600"
+                                      : d ? "bg-white/20" : "bg-gray-200"
+                                    }`}>
+                                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform
+                                    ${draft.fixedRaidDmEnabled !== false ? "translate-x-5" : "translate-x-0"}`} />
+                                </button>
+                              </div>
+                              <div className={`flex items-center justify-between px-4 py-3 rounded-xl border
+                                ${d ? "bg-white/[0.02] border-white/10" : "bg-purple-50/30 border-purple-100"}`}>
+                                <div>
+                                  <p className={`text-sm font-medium ${d ? "text-gray-200" : "text-gray-700"}`}>📢 수요일 공지 알림</p>
+                                  <p className={`text-xs mt-0.5 ${d ? "text-gray-500" : "text-gray-400"}`}>매주 수요일 오전 10시 이번 주 고정 레이드 일정을 공고 채널에 발송합니다</p>
+                                </div>
+                                <button
+                                  onClick={() => updateDraft(guild.id, "fixedRaidNotifyEnabled", draft.fixedRaidNotifyEnabled === false)}
+                                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0
+                                    ${draft.fixedRaidNotifyEnabled !== false
+                                      ? d ? "bg-amber-500" : "bg-purple-600"
+                                      : d ? "bg-white/20" : "bg-gray-200"
+                                    }`}>
+                                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform
+                                    ${draft.fixedRaidNotifyEnabled !== false ? "translate-x-5" : "translate-x-0"}`} />
+                                </button>
+                              </div>
+                            </div>
                           </div>
 
                           {/* 저장 결과 */}

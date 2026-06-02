@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react"
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Plus, Trash2, X, Shield } from "lucide-react"
+import { Plus, Trash2, X, Shield, Pencil } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
 import { getTheme } from "@/lib/themes"
 import { Card } from "@/components/ui/card"
@@ -72,6 +72,7 @@ export default function FixedRaidsPage() {
   const [dragData, setDragData] = useState(null)
   const [dragOverSlot, setDragOverSlot] = useState(null) // { raidId, slotIndex }
   const [toast, setToast] = useState(null) // { message, type: "error"|"success" }
+  const [editModal, setEditModal] = useState(null) // { raid, newTime, permanent }
   const toastTimerRef = useRef(null)
 
   useEffect(() => {
@@ -242,6 +243,31 @@ export default function FixedRaidsPage() {
 
     setDragData(null)
     setDragOverSlot(null)
+  }
+
+  const handleEditSave = async () => {
+    if (!editModal?.newTime) return
+    const { raid, newTime, permanent } = editModal
+    const body = permanent
+      ? { time: newTime }
+      : { nextWeekOverride: { time: newTime, active: true } }
+    try {
+      const res = await fetch(`/api/fixed-raids/${raid._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (data.fixedRaid) {
+        setFixedRaids(prev => prev.map(r => r._id === raid._id ? data.fixedRaid : r))
+        setEditModal(null)
+        showToast("시간이 수정되었습니다.", "success")
+      } else {
+        showToast(data.error || "수정 실패", "error")
+      }
+    } catch {
+      showToast("서버 오류가 발생했습니다.", "error")
+    }
   }
 
   const handleSlotClear = async (raidId, slotIndex) => {
@@ -431,12 +457,27 @@ export default function FixedRaidsPage() {
                                   {raid.difficulty_level}
                                 </span>
                               )}
-                              <span className={`text-xs font-medium ${d ? "text-amber-400" : "text-purple-600"}`}>
-                                {raid.time}
-                              </span>
+                              {raid.nextWeekOverride?.active ? (
+                                <span className="text-xs font-medium flex items-center gap-1 flex-wrap">
+                                  <s className={d ? "text-gray-500" : "text-gray-400"}>{raid.time}</s>
+                                  <span className={d ? "text-amber-400" : "text-purple-600"}>→ {raid.nextWeekOverride.time}</span>
+                                  <span className={`text-[10px] ${d ? "text-gray-500" : "text-gray-400"}`}>(다음주만)</span>
+                                </span>
+                              ) : (
+                                <span className={`text-xs font-medium ${d ? "text-amber-400" : "text-purple-600"}`}>
+                                  {raid.time}
+                                </span>
+                              )}
                             </div>
                             {isAdmin && (
                               <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                <button
+                                  onClick={() => setEditModal({ raid, newTime: raid.time, permanent: true })}
+                                  className={`p-1.5 rounded-lg transition-colors
+                                    ${d ? "text-gray-500 hover:text-blue-400 hover:bg-blue-500/10"
+                                        : "text-gray-400 hover:text-blue-500 hover:bg-blue-50"}`}>
+                                  <Pencil size={13} />
+                                </button>
                                 <button
                                   onClick={() => handleDelete(raid._id)}
                                   className={`p-1.5 rounded-lg transition-colors
@@ -583,6 +624,66 @@ export default function FixedRaidsPage() {
               고정 레이드 관련 문의사항은 서버 관리자에게 문의하세요
             </p>
           </div>
+        </div>
+      )}
+
+      {/* ── 시간 수정 모달 ── */}
+      {editModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+          onClick={() => setEditModal(null)}>
+          <Card
+            onClick={e => e.stopPropagation()}
+            className={`w-full max-w-sm rounded-2xl border p-5
+              ${d ? "bg-[#141824] border-white/15" : "bg-white border-purple-100"}`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-base font-bold ${d ? "text-white" : "text-gray-800"}`}>
+                시간 수정
+              </h3>
+              <button onClick={() => setEditModal(null)}
+                className={`p-1.5 rounded-lg transition-colors ${d ? "text-gray-500 hover:text-white hover:bg-white/10" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}>
+                <X size={16} />
+              </button>
+            </div>
+            <p className={`text-sm mb-4 ${d ? "text-gray-400" : "text-gray-500"}`}>
+              {editModal.raid.raidAlias} {editModal.raid.difficulty} · 현재 {editModal.raid.time}
+            </p>
+            <div className="mb-4">
+              <label className={`block text-xs font-medium mb-1.5 ${d ? "text-gray-400" : "text-gray-600"}`}>
+                새 시간 (HH:MM)
+              </label>
+              <input
+                type="time"
+                value={editModal.newTime}
+                onChange={e => setEditModal(prev => ({ ...prev, newTime: e.target.value }))}
+                className={inputCls}
+              />
+            </div>
+            <div className={`flex rounded-xl border overflow-hidden mb-4
+              ${d ? "border-white/10" : "border-purple-100"}`}>
+              {[{ label: "영구 변경", value: true }, { label: "다음주만", value: false }].map(opt => (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => setEditModal(prev => ({ ...prev, permanent: opt.value }))}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors
+                    ${editModal.permanent === opt.value
+                      ? d ? "bg-amber-500/20 text-amber-400" : "bg-purple-100 text-purple-700"
+                      : d ? "text-gray-500 hover:bg-white/5" : "text-gray-400 hover:bg-purple-50"
+                    }`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={handleEditSave}
+              disabled={!editModal.newTime}
+              className={`w-full py-2.5 text-sm font-bold
+                ${d ? "bg-amber-500 hover:bg-amber-400 text-black" : "bg-purple-600 hover:bg-purple-500 text-white"}
+                ${!editModal.newTime ? "opacity-50" : ""}`}>
+              저장
+            </Button>
+          </Card>
         </div>
       )}
 

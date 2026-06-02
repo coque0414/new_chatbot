@@ -36,6 +36,8 @@ export async function GET(request) {
       createChannelId: null,
       createChannelName: null,
       voiceChannelEnabled: true,
+      fixedRaidDmEnabled: true,
+      fixedRaidNotifyEnabled: true,
     }
   })
 }
@@ -50,6 +52,8 @@ export async function POST(request) {
     announcementChannelId, announcementChannelName,
     createChannelId, createChannelName,
     voiceChannelEnabled,
+    fixedRaidDmEnabled,
+    fixedRaidNotifyEnabled,
   } = body
 
   if (!guildId) return Response.json({ error: "guildId 필요" }, { status: 400 })
@@ -71,6 +75,8 @@ export async function POST(request) {
       ...(createChannelId !== undefined && { createChannelId }),
       ...(createChannelName !== undefined && { createChannelName }),
       ...(voiceChannelEnabled !== undefined && { voiceChannelEnabled }),
+      ...(fixedRaidDmEnabled !== undefined && { fixedRaidDmEnabled }),
+      ...(fixedRaidNotifyEnabled !== undefined && { fixedRaidNotifyEnabled }),
     },
     { upsert: true, new: true }
   )

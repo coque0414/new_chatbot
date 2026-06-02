@@ -2,7 +2,7 @@ import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import GuildSettings from "@/lib/models/GuildSettings"
 import FixedRaid from "@/lib/models/FixedRaid"
-import { sendRaidDM, buildNotifyEmbed, buildFixedRaidNotifyEmbed } from "@/lib/discordDM"
+import { sendRaidDM, buildNotifyEmbed } from "@/lib/discordDM"
 
 const DISCORD_API = "https://discord.com/api/v10"
 
@@ -220,7 +220,7 @@ export async function GET(request) {
 
     for (const [guildId, raids] of Object.entries(byGuild)) {
       const settings = await GuildSettings.findOne({ guildId })
-      if (!settings?.announcementChannelId) continue
+      if (!settings?.announcementChannelId || settings.fixedRaidNotifyEnabled === false) continue
 
       const byWeekday = {}
       for (const r of raids) {
@@ -277,41 +277,97 @@ export async function GET(request) {
     }
   }
 
-  // ── 4. 고정 레이드 당일 DM 알림 (30분 전 ±5분) ─────────────────────────
-  const todayWd = (() => {
-    const day = nowKST.getDay() // 0=일 1=월 2=화 3=수 4=목 5=금 6=토
-    const map = [4, 5, 6, 0, 1, 2, 3]
-    return map[day]
-  })()
+  // ── 4. 고정 레이드 당일 DM 일괄 발송 (오전 9시 ±10분) ──────────────────────
+  const isNineAM = kstHour === 9 && kstMin < 10
 
-  const todayFixedRaids = await FixedRaid.find({
-    weekday: todayWd,
-    notifyEnabled: true,
-  })
+  if (isNineAM) {
+    const todayWd = (() => {
+      const day = nowKST.getDay()
+      const map = [4, 5, 6, 0, 1, 2, 3]
+      return map[day]
+    })()
 
-  for (const fr of todayFixedRaids) {
-    const [hh, mm] = fr.time.split(":").map(Number)
-    const raidTime = new Date(nowKST)
-    raidTime.setHours(hh, mm, 0, 0)
-    const diffMin = (raidTime - nowKST) / 60000
+    const WEEKDAY_KR = ["수", "목", "금", "토", "일", "월", "화"]
+    const todayLabel = `${String(nowKST.getMonth()+1).padStart(2,"0")}/${String(nowKST.getDate()).padStart(2,"0")} ${WEEKDAY_KR[todayWd]}요일`
 
-    if (diffMin < 25 || diffMin > 35) continue
+    const todayFixed = await FixedRaid.find({ weekday: todayWd })
 
-    const filledSlots = fr.slots.filter(s => s.discordId)
-    if (filledSlots.length === 0) continue
-
-    const todayDate = new Date(nowKST)
-    const raidDateStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, "0")}-${String(todayDate.getDate()).padStart(2, "0")}`
-
-    const embed = buildFixedRaidNotifyEmbed(fr, raidDateStr)
-
-    for (const slot of filledSlots) {
-      try {
-        await sendRaidDM(slot.discordId, embed, {})
-      } catch (e) {
-        console.error(`[Scheduler] 고정 레이드 DM 실패 (${slot.discordId}):`, e.message)
+    if (todayFixed.length > 0) {
+      const byGuild = {}
+      for (const fr of todayFixed) {
+        if (!byGuild[fr.guildId]) byGuild[fr.guildId] = []
+        byGuild[fr.guildId].push(fr)
       }
-      await new Promise(r => setTimeout(r, 300))
+
+      for (const [guildId, raids] of Object.entries(byGuild)) {
+        const settings = await GuildSettings.findOne({ guildId })
+        if (settings?.fixedRaidDmEnabled === false) continue
+
+        const sorted = raids.sort((a, b) => {
+          const timeA = (a.nextWeekOverride?.active && a.nextWeekOverride?.time) ? a.nextWeekOverride.time : a.time
+          const timeB = (b.nextWeekOverride?.active && b.nextWeekOverride?.time) ? b.nextWeekOverride.time : b.time
+          return timeA.localeCompare(timeB)
+        })
+
+        const userIds = new Set()
+        for (const fr of sorted) {
+          fr.slots.filter(s => s.discordId).forEach(s => userIds.add(s.discordId))
+        }
+
+        for (const userId of userIds) {
+          const raidLines = []
+          for (const fr of sorted) {
+            const time = (fr.nextWeekOverride?.active && fr.nextWeekOverride?.time)
+              ? fr.nextWeekOverride.time
+              : fr.time
+            const diffLabel = fr.difficulty_level ? ` (${fr.difficulty_level})` : ""
+            const slotStr = fr.slots.map(s =>
+              s.discordId ? (s.characterName || s.serverNick || "?") : "공석"
+            ).join(", ")
+            raidLines.push(`⚔️ ${time} · ${fr.raidAlias} ${fr.difficulty}${diffLabel}`)
+            raidLines.push(slotStr)
+          }
+
+          const content = [
+            "📅 **오늘의 레이드 안내 DM 드립니다**",
+            "",
+            todayLabel,
+            "",
+            ...raidLines,
+            "",
+            "각 레이드 시간에 맞춰 진행 바랍니다.",
+            "오늘도 좋은 하루 되세요! 🙏",
+          ].join("\n")
+
+          try {
+            const dmChannel = await fetch(
+              `${DISCORD_API}/users/@me/channels`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ recipient_id: userId }),
+              }
+            ).then(r => r.json())
+
+            if (dmChannel.id) {
+              await fetch(`${DISCORD_API}/channels/${dmChannel.id}/messages`, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ content }),
+              })
+            }
+          } catch (e) {
+            console.error(`[Scheduler] 고정 레이드 DM 실패 (${userId}):`, e.message)
+          }
+          await new Promise(r => setTimeout(r, 300))
+        }
+      }
     }
   }
 
