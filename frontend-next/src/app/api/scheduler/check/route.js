@@ -205,6 +205,7 @@ export async function GET(request) {
   const isNearTen = kstHour === 10 && kstMin < 10
 
   const forceFixedNotify = searchParams.get("forceFixedNotify") === "1"
+  const testGuildId = searchParams.get("testGuildId") || null
 
   if ((isWednesday && isNearTen) || forceFixedNotify) {
     const wed = new Date(nowKST)
@@ -221,6 +222,7 @@ export async function GET(request) {
     const WEEKDAY_NAMES = ["수", "목", "금", "토", "일", "월", "화"]
 
     for (const [guildId, raids] of Object.entries(byGuild)) {
+      if (testGuildId && guildId !== testGuildId) continue
       const settings = await GuildSettings.findOne({ guildId })
       if (!settings?.announcementChannelId || settings.fixedRaidNotifyEnabled === false) continue
 
@@ -303,6 +305,7 @@ export async function GET(request) {
       }
 
       for (const [guildId, raids] of Object.entries(byGuild)) {
+        if (testGuildId && guildId !== testGuildId) continue
         const settings = await GuildSettings.findOne({ guildId })
         if (settings?.fixedRaidDmEnabled === false) continue
 
