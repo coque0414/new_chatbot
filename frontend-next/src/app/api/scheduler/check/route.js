@@ -256,7 +256,7 @@ export async function GET(request) {
             } else if (slot?.discordId) {
               return slot.serverNick || "?"
             }
-            return "( )"
+            return "(빈 자리)"
           }).join(", ")
           lines.push(`⚔️ ${r.raidAlias} ${r.difficulty}${diffLabel} · ${r.time}`)
           lines.push(`👥 ${slotStr}`)
@@ -333,7 +333,7 @@ export async function GET(request) {
               : fr.time
             const diffLabel = fr.difficulty_level ? ` (${fr.difficulty_level})` : ""
             const slotStr = fr.slots.map(s =>
-              s.discordId ? (s.characterName || s.serverNick || "?") : "( )"
+              s.discordId ? (s.characterName || s.serverNick || "?") : "(빈 자리)"
             ).join(", ")
             raidLines.push(`⚔️ ${time} · ${fr.raidAlias} ${fr.difficulty}${diffLabel}`)
             raidLines.push(slotStr)
