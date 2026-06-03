@@ -11,6 +11,7 @@ const GuildSettingsSchema = new mongoose.Schema({
   voiceChannelEnabled:      { type: Boolean, default: true },
   fixedRaidDmEnabled:       { type: Boolean, default: true },
   fixedRaidNotifyEnabled:   { type: Boolean, default: true },
+  lastFixedRaidNotifyDate:  { type: String,  default: null },
 }, { timestamps: true })
 
 export default mongoose.models.GuildSettings || mongoose.model("GuildSettings", GuildSettingsSchema)

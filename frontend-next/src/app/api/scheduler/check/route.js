@@ -226,6 +226,9 @@ export async function GET(request) {
       const settings = await GuildSettings.findOne({ guildId })
       if (!settings?.announcementChannelId || settings.fixedRaidNotifyEnabled === false) continue
 
+      const todayStr = `${nowKST.getFullYear()}-${String(nowKST.getMonth()+1).padStart(2,"0")}-${String(nowKST.getDate()).padStart(2,"0")}`
+      if (settings.lastFixedRaidNotifyDate === todayStr) continue
+
       const byWeekday = {}
       for (const r of raids) {
         if (!byWeekday[r.weekday]) byWeekday[r.weekday] = []
@@ -280,6 +283,7 @@ export async function GET(request) {
             body: JSON.stringify({ content: lines.join("\n") }),
           }
         )
+        await GuildSettings.findOneAndUpdate({ guildId }, { lastFixedRaidNotifyDate: todayStr })
       } catch (e) {
         console.error(`[Scheduler] 고정 레이드 공지 실패 (${guildId}):`, e.message)
       }
