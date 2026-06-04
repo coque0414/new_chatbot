@@ -227,7 +227,7 @@ export async function GET(request) {
       if (!settings?.announcementChannelId || settings.fixedRaidNotifyEnabled === false) continue
 
       const todayStr = `${nowKST.getFullYear()}-${String(nowKST.getMonth()+1).padStart(2,"0")}-${String(nowKST.getDate()).padStart(2,"0")}`
-      if (settings.lastFixedRaidNotifyDate === todayStr) continue
+      if (!forceFixedNotify && settings.lastFixedRaidNotifyDate === todayStr) continue
 
       const byWeekday = {}
       for (const r of raids) {
@@ -295,6 +295,7 @@ export async function GET(request) {
   const forceFixedDm = searchParams.get("forceFixedDm") === "1"
 
   if (isMidnight || forceFixedDm) {
+    const todayStr = `${nowKST.getFullYear()}-${String(nowKST.getMonth()+1).padStart(2,"0")}-${String(nowKST.getDate()).padStart(2,"0")}`
     const todayWd = (() => {
       const day = nowKST.getDay()
       const map = [4, 5, 6, 0, 1, 2, 3]
@@ -317,6 +318,7 @@ export async function GET(request) {
         if (testGuildId && guildId !== testGuildId) continue
         const settings = await GuildSettings.findOne({ guildId })
         if (settings?.fixedRaidDmEnabled === false) continue
+        if (!forceFixedDm && settings.lastFixedRaidDmDate === todayStr) continue
 
         const sorted = raids.sort((a, b) => {
           const timeA = (a.nextWeekOverride?.active && a.nextWeekOverride?.time) ? a.nextWeekOverride.time : a.time
@@ -382,6 +384,7 @@ export async function GET(request) {
           }
           await new Promise(r => setTimeout(r, 300))
         }
+        await GuildSettings.findOneAndUpdate({ guildId }, { lastFixedRaidDmDate: todayStr })
       }
     }
   }
