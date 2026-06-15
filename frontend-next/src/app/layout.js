@@ -2,6 +2,7 @@ import { Cinzel } from "next/font/google"
 import Script from "next/script"
 import "./globals.css"
 import Providers from "@/components/providers"
+import { Analytics } from "@vercel/analytics/next"
 
 const cinzel = Cinzel({
   subsets: ["latin"],
@@ -33,6 +34,7 @@ export default function RootLayout({ children }) {
         <Providers>
           {children}
         </Providers>
+        <Analytics />
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8018908047425988"
