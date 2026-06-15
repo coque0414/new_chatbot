@@ -106,6 +106,10 @@ export default function LandingPage() {
             className={`text-sm transition-colors tracking-wide ${d ? "text-gray-400 hover:text-amber-400" : "text-gray-500 hover:text-purple-600"}`}>
             레이드
           </a>
+          <a href="/guide"
+            className={`text-sm transition-colors tracking-wide ${d ? "text-gray-400 hover:text-amber-400" : "text-gray-500 hover:text-purple-600"}`}>
+            사용 가이드
+          </a>
 
           {/* 다크모드 토글 */}
           <button
