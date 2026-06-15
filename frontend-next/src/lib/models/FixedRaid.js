@@ -30,5 +30,8 @@ const FixedRaidSchema = new mongoose.Schema({
   },
 }, { timestamps: true })
 
+FixedRaidSchema.index({ guildId: 1, weekday: 1 })
+FixedRaidSchema.index({ weekday: 1, notifyEnabled: 1 })
+
 export default mongoose.models.FixedRaid
   || mongoose.model("FixedRaid", FixedRaidSchema)

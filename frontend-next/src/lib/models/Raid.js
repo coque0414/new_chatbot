@@ -85,4 +85,8 @@ const RaidSchema = new mongoose.Schema({
   timestamps: true
 })
 
+RaidSchema.index({ guildId: 1, status: 1 })
+RaidSchema.index({ dmSent: 1, status: 1 })
+RaidSchema.index({ voiceChannelId: 1 })
+
 export default mongoose.models.Raid || mongoose.model("Raid", RaidSchema)
