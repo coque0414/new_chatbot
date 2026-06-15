@@ -20,6 +20,9 @@ export async function connectDB() {
       serverSelectionTimeoutMS: 10000,
       socketTimeoutMS: 45000,
       family: 4, // IPv4 강제 사용
+      maxPoolSize: 10,
+      minPoolSize: 1,
+      bufferCommands: false,
     }).then(m => m)
   }
 
