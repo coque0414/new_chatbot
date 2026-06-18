@@ -20,6 +20,7 @@ import { launchRaid } from "@/lib/raidLaunch"
 import { getMinLevel, SUPPORTER_CLASSES } from "@/lib/lostarkData"
 import { TRAIN_PRESETS } from "@/lib/trainData"
 import { getLoaWeekStart } from "@/lib/loaWeek"
+import { incrementStat } from "@/lib/stats"
 
 const DISCORD_API = "https://discord.com/api/v10"
 
@@ -698,6 +699,7 @@ export async function POST(request) {
 
       // ── [기차] 딜러/서포터 참가 버튼 → 캐릭터 확인 ──────────────────────
       if (joinDealerTrainMatch || joinSupportTrainMatch) {
+        after(() => incrementStat(joinDealerTrainMatch ? "buttonClicks.join_dealer" : "buttonClicks.join_support"))
         const trainRaidId = joinDealerTrainMatch ? joinDealerTrainMatch[1] : joinSupportTrainMatch[1]
         const role        = joinDealerTrainMatch ? "dealer" : "support"
         const trainRaid   = await Raid.findById(trainRaidId)
@@ -738,6 +740,7 @@ export async function POST(request) {
 
       // ── [기차] 참가 취소 ──────────────────────────────────────────────────
       if (leaveTrainMatch) {
+        after(() => incrementStat("buttonClicks.cancel"))
         const trainRaidId = leaveTrainMatch[1]
         const trainRaid = await Raid.findById(trainRaidId)
         if (!trainRaid) {
@@ -758,6 +761,7 @@ export async function POST(request) {
 
       // ── [기차] 모집 취소 → 모달 ────────────────────────────────────────────
       if (cancelRaidTrainMatch) {
+        after(() => incrementStat("buttonClicks.cancel_raid"))
         const trainRaidId = cancelRaidTrainMatch[1]
         return Response.json({
           type: 9,
@@ -771,6 +775,7 @@ export async function POST(request) {
 
       // ── [기차] 출발 (주최자 전용) ─────────────────────────────────────────
       if (startRaidTrainMatch) {
+        after(() => incrementStat("buttonClicks.launch"))
         const trainRaidId = startRaidTrainMatch[1]
         const trainRaid = await Raid.findById(trainRaidId)
         if (!trainRaid) {
@@ -791,6 +796,7 @@ export async function POST(request) {
 
       // ── [기차] 참가자 명단 ──────────────────────────────────────────────────
       if (rosterTrainMatch) {
+        after(() => incrementStat("buttonClicks.participants"))
         const trainRaidId = rosterTrainMatch[1]
         const trainRaid = await Raid.findById(trainRaidId)
         if (!trainRaid) {
@@ -844,6 +850,7 @@ export async function POST(request) {
 
       // ── 딜러/서포터 참가 버튼 → 캐릭터 확인 ─────────────────────────────
       if (joinDealerMatch || joinSupportMatch) {
+        after(() => incrementStat(joinDealerMatch ? "buttonClicks.join_dealer" : "buttonClicks.join_support"))
         const raidId = joinDealerMatch ? joinDealerMatch[1] : joinSupportMatch[1]
         const role   = joinDealerMatch ? "dealer" : "support"
         const raid   = await Raid.findById(raidId)
@@ -900,6 +907,7 @@ export async function POST(request) {
 
       // ── 참가 취소 ──────────────────────────────────────────────────────────
       if (leaveMatch) {
+        after(() => incrementStat("buttonClicks.cancel"))
         const raidId = leaveMatch[1]
         const raid = await Raid.findById(raidId)
 
@@ -941,6 +949,7 @@ export async function POST(request) {
 
       // ── 모집 취소 (주최자만) → 모달 ──────────────────────────────────────
       if (cancelRaidMatch) {
+        after(() => incrementStat("buttonClicks.cancel_raid"))
         const raidId = cancelRaidMatch[1]
         return Response.json({
           type: 9,
@@ -967,6 +976,7 @@ export async function POST(request) {
       // ── 출발 (주최자 전용, 모바출 레이드만) ──────────────────────────────
       const departMatch = customId.match(/^depart_raid_(.+)$/)
       if (departMatch) {
+        after(() => incrementStat("buttonClicks.launch"))
         const raidId = departMatch[1]
         const raid = await Raid.findById(raidId)
 
@@ -991,6 +1001,7 @@ export async function POST(request) {
 
       // ── 참가자 명단 ────────────────────────────────────────────────────────
       if (rosterMatch) {
+        after(() => incrementStat("buttonClicks.participants"))
         const raidId = rosterMatch[1]
         const raid = await Raid.findById(raidId)
 
@@ -1329,6 +1340,7 @@ export async function POST(request) {
 
       // /지난레이드삭제
       if (commandName === "지난레이드삭제") {
+        after(() => incrementStat("commandUsage.지난레이드삭제"))
         const now = new Date()
         const memberPermissions = BigInt(interaction.member?.permissions || "0")
         const isAdmin = (memberPermissions & BigInt(0x8)) === BigInt(0x8)
@@ -1384,6 +1396,7 @@ export async function POST(request) {
 
       // /모집
       if (commandName === "모집" || commandName === "모바출모집") {
+        after(() => incrementStat(commandName === "모집" ? "commandUsage.모집" : "commandUsage.모바출모집"))
         const options = interaction.data.options || []
         const raidAlias       = options.find(o => o.name === "레이드")?.value
         const difficulty      = options.find(o => o.name === "난이도")?.value
@@ -1566,6 +1579,7 @@ export async function POST(request) {
 
       // /참가
       if (commandName === "참가") {
+        after(() => incrementStat("commandUsage.참가"))
         const options = interaction.data.options || []
         const raidId = options.find(o => o.name === "레이드id")?.value?.trim()
         const characterName = options.find(o => o.name === "캐릭터")?.value?.trim()
@@ -1798,6 +1812,7 @@ export async function POST(request) {
 
       // /같이참가
       if (commandName === "같이참가") {
+        after(() => incrementStat("commandUsage.같이참가"))
         const options = interaction.data.options || []
         const raidId = options.find(o => o.name === "레이드id")?.value?.trim()
         const targetUserId = options.find(o => o.name === "같이참가유저")?.value

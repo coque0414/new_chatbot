@@ -1,9 +1,11 @@
+import { after } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import { sendRaidAnnouncement, sendTrainAnnouncement } from "@/lib/discord"
 import { getLoaWeekStart } from "@/lib/loaWeek"
+import { incrementStat } from "@/lib/stats"
 
 // ── IP 기반 Rate Limit (POST /api/raids: 1분에 10회) ──
 const raidCreateRateLimit = new Map()
@@ -149,6 +151,7 @@ export async function POST(request) {
         }
       }
 
+      after(() => incrementStat("raidsCreated.web"))
       return Response.json({ success: true, raid })
     }
 
@@ -230,6 +233,7 @@ export async function POST(request) {
       }
     }
 
+    after(() => incrementStat("raidsCreated.web"))
     return Response.json({ success: true, raid })
 
   } catch (error) {
