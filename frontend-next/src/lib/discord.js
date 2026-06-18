@@ -67,6 +67,7 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
         components: [
           { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raidId}` },
           { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raidId}` },
+          { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
         ],
       },
     ]
@@ -138,6 +139,7 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
         ...(raid.isMobaChul ? [{ type: 2, style: 3, label: "🚀 출발", custom_id: `depart_raid_${raidId}` }] : []),
         { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raidId}` },
         { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raidId}` },
+        { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
       ]
     }
   ]
@@ -318,6 +320,7 @@ export async function sendTrainAnnouncement(channelId, trainInfo, hostName, raid
         ...(trainInfo.isMobaChul ? [{ type: 2, style: 3, label: "🚀 출발", custom_id: `depart_raid_${raidId}` }] : []),
         { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raidId}` },
         { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raidId}` },
+        { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
       ]
     }
   ]
@@ -410,6 +413,7 @@ export async function updateTrainDiscordMessage(raid) {
         }] : []),
         { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raidId}`, disabled: expired },
         { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raidId}` },
+        { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
       ]
     }
 
@@ -512,6 +516,7 @@ export async function updateTrainRaidDiscordMessage(trainRaid) {
         ...(trainRaid.isMobaChul ? [{ type: 2, style: 3, label: "🚀 출발", custom_id: `start_raid_train_${id}`, disabled: expired }] : []),
         { type: 2, style: 2, label: "🚫 모집 취소",    custom_id: `cancel_raid_train_${id}`, disabled: expired },
         { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_train_${id}` },
+        { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
       ],
     }
 
@@ -609,6 +614,7 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
       ...(trainRaid.isMobaChul ? [{ type: 2, style: 3, label: "🚀 출발", custom_id: `start_raid_train_${id}` }] : []),
       { type: 2, style: 2, label: "🚫 모집 취소",    custom_id: `cancel_raid_train_${id}` },
       { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_train_${id}` },
+      { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
     ],
   }
 
@@ -688,6 +694,7 @@ async function updateNsuDiscordMessage(raid) {
         components: [
           { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raidId}`, disabled: expired },
           { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raidId}` },
+          { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
         ],
       },
     ]
@@ -778,6 +785,7 @@ export async function updateDiscordMessage(raid) {
         }] : []),
         { type: 2, style: 2, label: "🚫 모집 취소", custom_id: `cancel_raid_${raid._id}`, disabled: expired },
         { type: 2, style: 1, label: "📋 참가자 명단", custom_id: `roster_${raid._id}` },
+        { type: 2, style: 5, label: "웹 대시보드", url: "https://loaraid-discobot.vercel.app" },
       ]
     }
 
