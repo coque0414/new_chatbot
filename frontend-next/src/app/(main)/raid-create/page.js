@@ -44,9 +44,6 @@ const RAIDS = [
         difficulties: [
           { name: "노말", level: 1670 },
           { name: "하드", level: 1690 },
-          { name: "익스트림 노말", level: 1720 },
-          { name: "익스트림 하드", level: 1750 },
-          { name: "나이트메어", level: 1770 },
         ]
       },
       {

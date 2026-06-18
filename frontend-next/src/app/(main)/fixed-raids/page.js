@@ -17,7 +17,7 @@ const SKILL_CHOICES = ["헤딩", "트라이", "클경", "반숙", "숙련", "숙
 const RAID_LIST = [
   { key: "ekidna",    raidAlias: "에키드나",   raidName: "붉어진 백야의 나선",       raidTag: "서막",    maxPlayers: 8,  difficulties: ["노말", "하드"] },
   { key: "aegir",     raidAlias: "에기르",     raidName: "대지를 부수는 업화의 궤적", raidTag: "1막",    maxPlayers: 8,  difficulties: ["노말", "하드"] },
-  { key: "abrelshud", raidAlias: "아브렐슈드", raidName: "부유하는 악몽의 진혼곡",    raidTag: "2막",    maxPlayers: 8,  difficulties: ["노말", "하드", "익스트림 노말", "익스트림 하드", "나이트메어"] },
+  { key: "abrelshud", raidAlias: "아브렐슈드", raidName: "부유하는 악몽의 진혼곡",    raidTag: "2막",    maxPlayers: 8,  difficulties: ["노말", "하드"] },
   { key: "mordoom",   raidAlias: "모르둠",     raidName: "칠흑, 폭풍의 밤",          raidTag: "3막",    maxPlayers: 8,  difficulties: ["노말", "하드"] },
   { key: "armoche",   raidAlias: "아르모체",   raidName: "파멸의 성채",              raidTag: "4막",    maxPlayers: 8,  difficulties: ["노말", "하드"] },
   { key: "kazeros",   raidAlias: "카제로스",   raidName: "최후의 날",               raidTag: "종막",   maxPlayers: 8,  difficulties: ["노말", "하드"] },
