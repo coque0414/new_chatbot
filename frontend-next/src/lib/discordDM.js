@@ -64,14 +64,14 @@ export function buildLaunchEmbed(raid) {
     : "없음"
 
   const title = raid.isTrain
-    ? `⚔️ ${raid.trainLabel} 레이드가 곧 시작됩니다!`
-    : `⚔️ ${raid.raidAlias} ${raid.difficulty} 레이드가 곧 시작됩니다!`
+    ? `${raid.trainLabel} 출발합니다`
+    : `${raid.raidAlias} ${raid.difficulty} 출발합니다`
   const description = raid.isTrain
-    ? "기차 레이드 파티가 지금 출발합니다!"
-    : `**${raid.raidName}** 파티가 지금 출발합니다!`
+    ? "파티 출발합니다"
+    : `${raid.raidName} 파티 출발합니다`
   const trainRaidsField = raid.isTrain && raid.trainRaids?.length > 0
     ? [{
-        name: "📋 레이드 구성",
+        name: "레이드 구성",
         value: raid.trainRaids
           .sort((a, b) => a.order - b.order)
           .map((r, i) => `${i + 1}. (${r.raidTag}) ${r.raidAlias} ${r.difficulty}`)
@@ -87,15 +87,15 @@ export function buildLaunchEmbed(raid) {
     fields: [
       ...trainRaidsField,
       {
-        name: "📅 시작",
+        name: "시작",
         value: raid.isMobaChul ? "⚡ 모바출" : `${raid.date} ${raid.time}`,
         inline: true,
       },
-      { name: "👑 주최자", value: raid.hostName, inline: true },
-      { name: "⚔️ 딜러", value: dealerList, inline: false },
-      { name: "🛡️ 서포터", value: supporterList, inline: false },
+      { name: "주최자", value: raid.hostName, inline: true },
+      { name: "딜러", value: dealerList, inline: false },
+      { name: "서포터", value: supporterList, inline: false },
     ],
-    footer: { text: "LostArk Guide · 레이드 알림" },
+    footer: { text: "LostArk 레이드 알림" },
     timestamp: new Date().toISOString(),
   }
 }
@@ -126,15 +126,15 @@ export function buildTrainRaidLaunchEmbed(trainRaid) {
     description: "기차 레이드 파티가 지금 출발합니다!",
     color: 0x9B59B6,
     fields: [
-      { name: "📋 레이드 구성", value: raidListText, inline: false },
+      { name: "레이드 구성", value: raidListText, inline: false },
       {
-        name: "📅 시작",
+        name: "시작",
         value: trainRaid.isMobaChul ? "⚡ 모바출" : `${trainRaid.date} ${trainRaid.time}`,
         inline: true,
       },
-      { name: "👑 주최자", value: trainRaid.hostName, inline: true },
-      { name: "⚔️ 딜러", value: dealerList, inline: false },
-      { name: "🛡️ 서포터", value: supporterList, inline: false },
+      { name: "주최자", value: trainRaid.hostName, inline: true },
+      { name: "딜러", value: dealerList, inline: false },
+      { name: "서포터", value: supporterList, inline: false },
     ],
     footer: { text: "LostArk Guide · 기차 레이드 출발 알림" },
     timestamp: new Date().toISOString(),
@@ -144,7 +144,7 @@ export function buildTrainRaidLaunchEmbed(trainRaid) {
 // 고정 레이드 당일 DM 알림 embed 생성
 export function buildFixedRaidNotifyEmbed(fixedRaid, raidDate) {
   return {
-    title: `📌 오늘 고정 레이드가 있습니다!`,
+    title: `오늘 고정 레이드가 있습니다`,
     description: `${fixedRaid.raidAlias} ${fixedRaid.difficulty}${fixedRaid.difficulty_level ? ` (${fixedRaid.difficulty_level})` : ""}`,
     color: 0x9B59B6,
     fields: [
@@ -154,7 +154,7 @@ export function buildFixedRaidNotifyEmbed(fixedRaid, raidDate) {
         name: "참가자",
         value: fixedRaid.slots
           .filter(s => s.discordId)
-          .map(s => `${s.role === "support" ? "🛡️" : "⚔️"} ${s.serverNick} (${s.characterName})`)
+          .map(s => `${s.serverNick} (${s.characterName})`)
           .join("\n") || "없음",
         inline: false,
       },
@@ -180,11 +180,11 @@ export function buildNotifyEmbed(raid) {
     : "없음"
 
   const title = raid.isTrain
-    ? `⏰ ${raid.trainLabel} ${notifyMin}분 전 알림!`
-    : `⏰ ${raid.raidAlias} ${raid.difficulty} 레이드 ${notifyMin}분 전 알림!`
+    ? `${raid.trainLabel} ${notifyMin}분 후 시작입니다`
+    : `${raid.raidAlias} ${raid.difficulty} ${notifyMin}분 후 시작입니다`
   const trainRaidsField = raid.isTrain && raid.trainRaids?.length > 0
     ? [{
-        name: "📋 레이드 구성",
+        name: "레이드 구성",
         value: raid.trainRaids
           .sort((a, b) => a.order - b.order)
           .map((r, i) => `${i + 1}. (${r.raidTag}) ${r.raidAlias} ${r.difficulty}`)
@@ -198,12 +198,12 @@ export function buildNotifyEmbed(raid) {
     color: 0x9B59B6,
     fields: [
       ...trainRaidsField,
-      { name: "📅 시작", value: `${raid.date} ${raid.time}`, inline: true },
-      { name: "👑 주최자", value: raid.hostName, inline: true },
-      { name: "⚔️ 딜러", value: dealerList, inline: false },
-      { name: "🛡️ 서포터", value: supporterList, inline: false },
+      { name: "시작", value: `${raid.date} ${raid.time}`, inline: true },
+      { name: "주최자", value: raid.hostName, inline: true },
+      { name: "딜러", value: dealerList, inline: false },
+      { name: "서포터", value: supporterList, inline: false },
     ],
-    footer: { text: "LostArk Guide · 레이드 알림" },
+    footer: { text: "LostArk 레이드 알림" },
     timestamp: new Date().toISOString(),
   }
 }

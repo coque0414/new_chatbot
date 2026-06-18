@@ -235,7 +235,7 @@ export async function GET(request) {
         byWeekday[r.weekday].push(r)
       }
 
-      let lines = ["📌 **이번 주 고정 레이드 일정 안내**\n━━━━━━━━━━━━━━━━━━━━"]
+      let lines = ["**이번 주 고정 레이드 일정입니다**\n─────────────────────"]
 
       for (let wd = 0; wd <= 6; wd++) {
         const dayRaids = byWeekday[wd]
@@ -247,7 +247,7 @@ export async function GET(request) {
         const dd = String(d.getDate()).padStart(2, "0")
         const dateLabel = `${mm}/${dd}`
 
-        lines.push(`\n📅 **${WEEKDAY_NAMES[wd]} ${dateLabel}**`)
+        lines.push(`\n**${WEEKDAY_NAMES[wd]} ${dateLabel}**`)
 
         const sorted = dayRaids.sort((a, b) => a.time.localeCompare(b.time))
         for (const r of sorted) {
@@ -261,14 +261,13 @@ export async function GET(request) {
             }
             return "(빈 자리)"
           }).join(", ")
-          lines.push(`⚔️ ${r.raidAlias} ${r.difficulty}${diffLabel} · ${r.time}`)
-          lines.push(`👥 ${slotStr}`)
+          lines.push(`${r.raidAlias} ${r.difficulty}${diffLabel} · ${r.time}`)
+          lines.push(slotStr)
         }
       }
 
-      lines.push("\n━━━━━━━━━━━━━━━━━━━━")
-      lines.push("자세한 일정 및 참가자 명단은")
-      lines.push("👉 웹 대시보드에서 확인하세요")
+      lines.push("\n─────────────────────")
+      lines.push("자세한 내용은 웹 대시보드에서 확인하세요")
       lines.push("https://loaraid-discobot.vercel.app/fixed-raids")
 
       try {
@@ -341,19 +340,18 @@ export async function GET(request) {
             const slotStr = fr.slots.map(s =>
               s.discordId ? (s.characterName || s.serverNick || "?") : "(빈 자리)"
             ).join(", ")
-            raidLines.push(`⚔️ ${time} · ${fr.raidAlias} ${fr.difficulty}${diffLabel}`)
+            raidLines.push(`${time} ${fr.raidAlias} ${fr.difficulty}${diffLabel}`)
             raidLines.push(slotStr)
           }
 
           const content = [
-            "📅 **오늘의 레이드 안내 DM 드립니다**",
+            "**오늘 레이드 일정입니다**",
             "",
             todayLabel,
             "",
             ...raidLines,
             "",
-            "각 레이드 시간에 맞춰 진행 바랍니다.",
-            "오늘도 좋은 하루 되세요! 🙏",
+            "시간 맞춰서 진행 부탁드립니다.",
           ].join("\n")
 
           try {

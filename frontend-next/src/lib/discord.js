@@ -38,7 +38,7 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
 
     const embed = {
       title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} ${totalRounds}수 모집`,
-      description: `${raid.raidName} 파티원을 모집합니다`,
+      description: `${raid.raidName} 공대 모집`,
       color: 0x9B59B6,
       fields: [
         {
@@ -88,19 +88,19 @@ export async function sendRaidAnnouncement(channelId, raid, hostName, raidId, in
   const dealerList = dealers.length > 0
     ? dealers.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `⚔️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
   const supporterList = supporters.length > 0
     ? supporters.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `🛡️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
 
   const embed = {
     title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} 모집`,
-    description: `${raid.raidName} 파티원을 모집합니다`,
+    description: `${raid.raidName} 공대 모집`,
     color: 0x9B59B6,
     fields: [
       {
@@ -200,21 +200,21 @@ export async function sendDepartDMs(raid) {
 
   // 2. DM embed 구성
   const dealerList = dealers.length > 0
-    ? dealers.map((p, i) => `${i + 1}. ⚔️ ${p.userName}`).join("\n")
+    ? dealers.map((p, i) => `${i + 1}. ${p.userName}`).join("\n")
     : "없음"
   const supporterList = supporters.length > 0
-    ? supporters.map((p, i) => `${i + 1}. 🛡️ ${p.userName}`).join("\n")
+    ? supporters.map((p, i) => `${i + 1}. ${p.userName}`).join("\n")
     : "없음"
 
   const embed = {
-    title: `⚔️ ${raid.raidAlias} ${raid.difficulty} 레이드가 곧 시작됩니다!`,
-    description: `**${raid.raidName}** 파티가 지금 출발합니다!`,
+    title: `${raid.raidAlias} ${raid.difficulty} 출발합니다`,
+    description: `${raid.raidName} 파티 출발합니다`,
     color: 0xE67E22,
     fields: [
-      { name: "⚔️ 딜러", value: dealerList, inline: true },
-      { name: "🛡️ 서포터", value: supporterList, inline: true },
+      { name: "딜러", value: dealerList, inline: true },
+      { name: "서포터", value: supporterList, inline: true },
     ],
-    footer: { text: "LostArk Guide · 레이드 출발 알림" },
+    footer: { text: "LostArk 레이드 알림" },
     timestamp: new Date().toISOString(),
   }
 
@@ -266,13 +266,13 @@ export async function sendTrainAnnouncement(channelId, trainInfo, hostName, raid
   const dealerList = dealers.length > 0
     ? dealers.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `⚔️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
   const supporterList = supporters.length > 0
     ? supporters.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `🛡️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
 
@@ -282,7 +282,7 @@ export async function sendTrainAnnouncement(channelId, trainInfo, hostName, raid
 
   const embed = {
     title: `${trainInfo.trainLabel} (${trainInfo.maxPlayers}인)${trainInfo.difficulty_level ? ` (${trainInfo.difficulty_level})` : ""} 모집`,
-    description: "파티원을 모집합니다",
+    description: "공대 모집",
     color: 0x9B59B6,
     fields: [
       { name: "레이드 구성", value: raidListText, inline: false },
@@ -354,13 +354,13 @@ export async function updateTrainDiscordMessage(raid) {
   const dealerList = dealers.length > 0
     ? dealers.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `⚔️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
   const supporterList = supporters.length > 0
     ? supporters.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `🛡️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
 
@@ -375,7 +375,7 @@ export async function updateTrainDiscordMessage(raid) {
 
   const embedData = {
     title: `${label} (${raid.maxPlayers}인)${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} 모집`,
-    description: "파티원을 모집합니다",
+    description: "공대 모집",
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [
       { name: "레이드 구성", value: raidListText, inline: false },
@@ -468,13 +468,13 @@ export async function updateTrainRaidDiscordMessage(trainRaid) {
   const dealerList = dealers.length > 0
     ? dealers.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `⚔️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
   const supporterList = supporters.length > 0
     ? supporters.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `🛡️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
 
@@ -482,7 +482,7 @@ export async function updateTrainRaidDiscordMessage(trainRaid) {
 
   const embedData = {
     title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인)${trainRaid.difficulty_level ? ` (${trainRaid.difficulty_level})` : ""} 모집`,
-    description: "파티원을 모집합니다",
+    description: "공대 모집",
     color: embedColor[trainRaid.status] ?? 0x9B59B6,
     fields: [
       { name: "레이드 구성", value: raidListText, inline: false },
@@ -555,13 +555,13 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
   const dealerList = dealers.length > 0
     ? dealers.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `⚔️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
   const supporterList = supporters.length > 0
     ? supporters.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `🛡️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
 
@@ -574,7 +574,7 @@ export async function sendTrainRaidAnnouncement(channelId, trainRaid) {
 
   const embed = {
     title: `${trainRaid.trainLabel} (${trainRaid.maxPlayers}인)${trainRaid.difficulty_level ? ` (${trainRaid.difficulty_level})` : ""} 모집`,
-    description: "파티원을 모집합니다",
+    description: "공대 모집",
     color: 0x9B59B6,
     fields: [
       { name: "레이드 구성", value: raidListText, inline: false },
@@ -655,7 +655,7 @@ async function updateNsuDiscordMessage(raid) {
 
   const embedData = {
     title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} ${raid.totalRounds}수 모집`,
-    description: `${raid.raidName} 파티원을 모집합니다`,
+    description: `${raid.raidName} 공대 모집`,
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [
       {
@@ -719,13 +719,13 @@ export async function updateDiscordMessage(raid) {
   const dealerList = dealers.length > 0
     ? dealers.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `⚔️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
   const supporterList = supporters.length > 0
     ? supporters.map(p => {
         const charInfo = p.characterName ? ` : (${p.characterClass}) ${p.characterName} Lv.${p.characterLevel}${p.characterCombatPower ? ` | 전투력 ${p.characterCombatPower.toLocaleString()}` : ""}` : ""
-        return `🛡️ ${p.userName}${charInfo}`
+        return `${p.userName}${charInfo}`
       }).join("\n")
     : "없음"
 
@@ -738,7 +738,7 @@ export async function updateDiscordMessage(raid) {
 
   const embedData = {
     title: `${raid.raidAlias} ${raid.difficulty}${raid.difficulty_level ? ` (${raid.difficulty_level})` : ""} 모집`,
-    description: `${raid.raidName} 파티원을 모집합니다`,
+    description: `${raid.raidName} 공대 모집`,
     color: embedColor[raid.status] ?? 0x9B59B6,
     fields: [
       {
