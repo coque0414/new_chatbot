@@ -2,7 +2,7 @@ import { Cinzel } from "next/font/google"
 import Script from "next/script"
 import "./globals.css"
 import Providers from "@/components/providers"
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react"
 
 const cinzel = Cinzel({
   subsets: ["latin"],
