@@ -31,7 +31,7 @@ const UserCharacters = mongoose.models.UserCharacters
   || mongoose.model('UserCharacters', UserCharactersSchema)
 
 // ── 로아 API 헬퍼 ────────────────────────────────────────────────────────────
-const LOSTARK_API = 'https://developer-lostark.game.gg'
+const LOSTARK_API = 'https://developer-lostark.game.onstove.com'
 
 async function fetchCharacterSiblings(name) {
   const res = await fetch(
@@ -410,25 +410,8 @@ async function main() {
 
   // 임시 테스트 - 확인 후 삭제
   setTimeout(async () => {
-    const dns = require('dns').promises
-    console.log('[DNS TEST] 로아 API 도메인 조회 시작')
-    try {
-      const result = await dns.lookup('developer-lostark.game.gg')
-      console.log('[DNS TEST] IP:', result.address)
-    } catch (e) {
-      console.error('[DNS TEST] DNS 조회 실패:', e.message)
-
-      // Google DNS로 재시도
-      const resolver = new (require('dns').Resolver)()
-      resolver.setServers(['8.8.8.8', '1.1.1.1'])
-      resolver.resolve4('developer-lostark.game.gg', (err, addresses) => {
-        if (err) {
-          console.error('[DNS TEST] Google DNS도 실패:', err.message)
-        } else {
-          console.log('[DNS TEST] Google DNS 결과:', addresses)
-        }
-      })
-    }
+    console.log('[CharRefresh TEST] 강제 실행')
+    await refreshAllCharacters()
   }, 10000)
 }
 
