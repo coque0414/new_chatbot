@@ -410,9 +410,19 @@ async function main() {
 
   // 임시 테스트 - 확인 후 삭제
   setTimeout(async () => {
-    console.log('[CharRefresh TEST] 강제 실행')
-    await refreshAllCharacters()
-  }, 10000) // 10초 후 실행
+    console.log('[Network TEST] 로아 API 연결 테스트')
+    try {
+      const res = await fetch('https://developer-lostark.game.gg', {
+        headers: {
+          Authorization: `bearer ${process.env.LOSTARK_API_KEY}`,
+          Accept: 'application/json',
+        },
+      })
+      console.log('[Network TEST] 응답 status:', res.status)
+    } catch (e) {
+      console.error('[Network TEST] 연결 실패:', e.message, e.cause)
+    }
+  }, 10000)
 }
 
 main().catch(err => {
