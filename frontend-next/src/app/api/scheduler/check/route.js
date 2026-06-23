@@ -400,6 +400,17 @@ export async function GET(request) {
 
     const allUsers = await UserCharacters.find({})
 
+    if (allUsers.length > 0) {
+      const firstUser = allUsers[0].toObject()
+      console.log("[CharRefresh DEBUG] 첫 유저:", firstUser.discordId)
+      console.log("[CharRefresh DEBUG] accounts:", JSON.stringify(firstUser.accounts?.slice(0,1)))
+      console.log("[CharRefresh DEBUG] representativeName:",
+        firstUser.accounts?.length > 0
+          ? firstUser.accounts[0]?.characters?.[0]?.name
+          : firstUser.characters?.[0]?.name
+      )
+    }
+
     for (const userChar of allUsers) {
       try {
         const obj = userChar.toObject()
@@ -437,7 +448,7 @@ export async function GET(request) {
         updatedCount++
         await new Promise(r => setTimeout(r, 500))
       } catch (e) {
-        console.error(`[CharRefresh] 유저 ${userChar.discordId} 실패:`, e.message)
+        console.error(`[CharRefresh] 유저 ${userChar.discordId} 실패:`, e.message, e.stack)
         failedCount++
       }
     }
