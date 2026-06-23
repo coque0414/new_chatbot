@@ -393,7 +393,9 @@ export async function GET(request) {
   let updatedCount = 0
   let failedCount = 0
 
-  if (isWednesday && isMidnight) {
+  const forceCharRefresh = searchParams.get("forceCharRefresh") === "1"
+
+  if ((isWednesday && isMidnight) || forceCharRefresh) {
     console.log("[CharRefresh] 주간 캐릭터 자동 갱신 시작")
 
     const allUsers = await UserCharacters.find({})
@@ -449,7 +451,7 @@ export async function GET(request) {
     dmWindows: { "10min": `${win5}~${win15}`, "20min": `${win15}~${win25}`, "30min": `${win25}~${win35}` },
     dmSent: dmResults,
     voiceChannelsDeleted: deleteResults,
-    charRefresh: isWednesday && isMidnight
+    charRefresh: (isWednesday && isMidnight) || forceCharRefresh
       ? { updated: updatedCount, failed: failedCount }
       : "skipped",
   })
