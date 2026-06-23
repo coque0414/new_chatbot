@@ -22,6 +22,156 @@ const RaidSchema = new mongoose.Schema(
 )
 const Raid = mongoose.models.Raid || mongoose.model('Raid', RaidSchema)
 
+// ── UserCharacters 모델 ───────────────────────────────────────────────────────
+const UserCharactersSchema = new mongoose.Schema(
+  { discordId: String, accounts: Array, characters: Array },
+  { strict: false, collection: 'usercharacters' }
+)
+const UserCharacters = mongoose.models.UserCharacters
+  || mongoose.model('UserCharacters', UserCharactersSchema)
+
+// ── 로아 API 헬퍼 ────────────────────────────────────────────────────────────
+const LOSTARK_API = 'https://developer-lostark.game.gg'
+
+async function fetchCharacterSiblings(name) {
+  const res = await fetch(
+    `${LOSTARK_API}/characters/${encodeURIComponent(name)}/siblings`,
+    {
+      headers: {
+        Authorization: `bearer ${process.env.LOSTARK_API_KEY}`,
+        Accept: 'application/json',
+      },
+    }
+  )
+  if (!res.ok) return null
+  return res.json()
+}
+
+async function fetchCombatPower(name) {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(
+      `${LOSTARK_API}/armories/characters/${encodeURIComponent(name)}?filters=profiles`,
+      {
+        headers: {
+          Authorization: `bearer ${process.env.LOSTARK_API_KEY}`,
+          Accept: 'application/json',
+        },
+        signal: controller.signal,
+      }
+    )
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data?.ArmoryProfile?.CombatPower
+      ? parseFloat(data.ArmoryProfile.CombatPower.replace(/,/g, ''))
+      : null
+  } catch {
+    return null
+  }
+}
+
+async function fetchAndBuildCharacters(representativeName) {
+  const siblings = await fetchCharacterSiblings(representativeName)
+  if (!siblings) return null
+
+  const characters = []
+  for (const char of siblings) {
+    const level = parseFloat(
+      (char.ItemAvgLevel || '0').replace(/,/g, '')
+    )
+    if (level < 1680) continue
+
+    await new Promise(r => setTimeout(r, 200))
+
+    const combatPower = await fetchCombatPower(char.CharacterName)
+    characters.push({
+      name: char.CharacterName,
+      class: char.CharacterClassName,
+      level,
+      combatPower,
+      server: char.ServerName,
+    })
+  }
+  return characters
+}
+
+// ── 캐릭터 자동 갱신 ──────────────────────────────────────────────────────────
+async function refreshAllCharacters() {
+  if (!process.env.LOSTARK_API_KEY) {
+    console.log('[CharRefresh] LOSTARK_API_KEY 없음, 건너뜀')
+    return
+  }
+
+  console.log('[CharRefresh] 주간 캐릭터 자동 갱신 시작')
+  const allUsers = await UserCharacters.find({})
+  let updatedCount = 0
+  let failedCount = 0
+
+  for (const userChar of allUsers) {
+    try {
+      const obj = userChar.toObject()
+      let representativeName = null
+
+      if (obj.accounts?.length > 0) {
+        representativeName = obj.accounts[0]?.characters?.[0]?.name
+      } else {
+        representativeName = obj.characters?.[0]?.name
+      }
+
+      if (!representativeName) continue
+
+      const newChars = await fetchAndBuildCharacters(representativeName)
+      if (!newChars || newChars.length === 0) {
+        failedCount++
+        continue
+      }
+
+      if (obj.accounts?.length > 0) {
+        const updatedAccounts = obj.accounts.map((acc, i) => {
+          if (i === 0) return { ...acc, characters: newChars }
+          return acc
+        })
+        await UserCharacters.findByIdAndUpdate(userChar._id, {
+          accounts: updatedAccounts,
+          characters: newChars,
+        })
+      } else {
+        await UserCharacters.findByIdAndUpdate(userChar._id, {
+          characters: newChars,
+        })
+      }
+
+      updatedCount++
+      console.log(`[CharRefresh] ${userChar.discordId} 갱신 완료 (${newChars.length}개)`)
+    } catch (e) {
+      console.error(`[CharRefresh] ${userChar.discordId} 실패:`, e.message)
+      failedCount++
+    }
+
+    await new Promise(r => setTimeout(r, 500))
+  }
+
+  console.log(`[CharRefresh] 완료 — 성공: ${updatedCount}, 실패: ${failedCount}`)
+}
+
+let lastCharRefreshDate = null
+
+async function checkCharRefresh() {
+  const now = new Date()
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  const day = kst.getDay()
+  const hour = kst.getHours()
+  const min = kst.getMinutes()
+  const todayStr = kst.toISOString().slice(0, 10)
+
+  const isWedMidnight = day === 3 && hour === 0 && min < 10
+  if (isWedMidnight && lastCharRefreshDate !== todayStr) {
+    lastCharRefreshDate = todayStr
+    await refreshAllCharacters()
+  }
+}
 
 // ── 음성 상태 추적 (메모리) ──────────────────────────────────────────────────
 // voiceStateMap : channelId  → Set<userId>  (채널에 현재 있는 유저)
@@ -255,6 +405,8 @@ async function main() {
   // 시작 시 즉시 1회 실행 + 5분마다 반복
   runScheduler()
   setInterval(runScheduler, 5 * 60 * 1000)
+  checkCharRefresh()
+  setInterval(checkCharRefresh, 5 * 60 * 1000)
 }
 
 main().catch(err => {
