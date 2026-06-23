@@ -398,6 +398,28 @@ async function runScheduler() {
   }
 }
 
+// ── Vercel 서버리스 함수 워밍업 ──────────────────────────────────────────────────
+async function pingInteractions() {
+  try {
+    await fetch(
+      `http://localhost:3000/api/discord/interactions`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+    )
+  } catch (_) {}
+}
+
+async function pingVercel() {
+  try {
+    const base = 'https://loaraid-discobot.vercel.app'
+    await Promise.all([
+      fetch(`${base}/api/discord/interactions`, { method: 'POST' }),
+      fetch(`${base}/api/raids`),
+      fetch(`${base}/api/characters`),
+    ])
+    console.log('[Ping] Vercel 함수 워밍업 완료')
+  } catch (_) {}
+}
+
 // ── 진입점 ─────────────────────────────────────────────────────────────────────
 async function main() {
   await connectDB()
@@ -407,6 +429,8 @@ async function main() {
   setInterval(runScheduler, 5 * 60 * 1000)
   checkCharRefresh()
   setInterval(checkCharRefresh, 5 * 60 * 1000)
+  pingVercel()
+  setInterval(pingVercel, 4 * 60 * 1000)
 }
 
 main().catch(err => {
