@@ -2,7 +2,9 @@ import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
 import GuildSettings from "@/lib/models/GuildSettings"
 import FixedRaid from "@/lib/models/FixedRaid"
+import UserCharacters from "@/lib/models/UserCharacters"
 import { sendRaidDM, buildNotifyEmbed } from "@/lib/discordDM"
+import { fetchAndBuildCharacters } from "@/lib/lostarkApi"
 
 const DISCORD_API = "https://discord.com/api/v10"
 
@@ -387,11 +389,68 @@ export async function GET(request) {
     }
   }
 
+  // ── 5. 매주 수요일 자정 캐릭터 자동 갱신 ─────────────────────────────────
+  let updatedCount = 0
+  let failedCount = 0
+
+  if (isWednesday && isMidnight) {
+    console.log("[CharRefresh] 주간 캐릭터 자동 갱신 시작")
+
+    const allUsers = await UserCharacters.find({})
+
+    for (const userChar of allUsers) {
+      try {
+        const obj = userChar.toObject()
+        let representativeName = null
+
+        if (obj.accounts?.length > 0) {
+          representativeName = obj.accounts[0]?.characters?.[0]?.name
+        } else {
+          representativeName = obj.characters?.[0]?.name
+        }
+
+        if (!representativeName) continue
+
+        const newChars = await fetchAndBuildCharacters(representativeName)
+        if (!newChars || newChars.length === 0) {
+          failedCount++
+          continue
+        }
+
+        if (obj.accounts?.length > 0) {
+          const updatedAccounts = obj.accounts.map((acc, i) => {
+            if (i === 0) return { ...acc, characters: newChars }
+            return acc
+          })
+          await UserCharacters.findByIdAndUpdate(userChar._id, {
+            accounts: updatedAccounts,
+            characters: newChars,
+          })
+        } else {
+          await UserCharacters.findByIdAndUpdate(userChar._id, {
+            characters: newChars,
+          })
+        }
+
+        updatedCount++
+        await new Promise(r => setTimeout(r, 500))
+      } catch (e) {
+        console.error(`[CharRefresh] 유저 ${userChar.discordId} 실패:`, e.message)
+        failedCount++
+      }
+    }
+
+    console.log(`[CharRefresh] 완료 — 성공: ${updatedCount}, 실패: ${failedCount}`)
+  }
+
   return Response.json({
     ok: true,
     checkedAt: toKSTDateTimeStr(nowKST),
     dmWindows: { "10min": `${win5}~${win15}`, "20min": `${win15}~${win25}`, "30min": `${win25}~${win35}` },
     dmSent: dmResults,
     voiceChannelsDeleted: deleteResults,
+    charRefresh: isWednesday && isMidnight
+      ? { updated: updatedCount, failed: failedCount }
+      : "skipped",
   })
 }
