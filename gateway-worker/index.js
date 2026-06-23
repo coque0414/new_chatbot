@@ -410,17 +410,12 @@ async function main() {
 
   // 임시 테스트 - 확인 후 삭제
   setTimeout(async () => {
-    console.log('[Network TEST] 로아 API 연결 테스트')
+    console.log('[Network TEST] 구글 연결 테스트')
     try {
-      const res = await fetch('https://developer-lostark.game.gg', {
-        headers: {
-          Authorization: `bearer ${process.env.LOSTARK_API_KEY}`,
-          Accept: 'application/json',
-        },
-      })
-      console.log('[Network TEST] 응답 status:', res.status)
+      const res = await fetch('https://www.google.com')
+      console.log('[Network TEST] 구글 응답 status:', res.status)
     } catch (e) {
-      console.error('[Network TEST] 연결 실패:', e.message, e.cause)
+      console.error('[Network TEST] 구글 실패:', e.message)
     }
   }, 10000)
 }
