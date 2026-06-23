@@ -407,6 +407,12 @@ async function main() {
   setInterval(runScheduler, 5 * 60 * 1000)
   checkCharRefresh()
   setInterval(checkCharRefresh, 5 * 60 * 1000)
+
+  // 임시 테스트 - 확인 후 삭제
+  setTimeout(async () => {
+    console.log('[CharRefresh TEST] 강제 실행')
+    await refreshAllCharacters()
+  }, 10000) // 10초 후 실행
 }
 
 main().catch(err => {
