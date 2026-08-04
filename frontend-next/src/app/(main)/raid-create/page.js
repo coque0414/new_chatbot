@@ -92,6 +92,17 @@ const RAIDS = [
           { name: "나이트메어", level: 1740 },
         ]
       },
+      {
+        name: "벨가르딘",
+        alias: "벨가르딘",
+        tag: "그림자",
+        maxPlayers: 8,
+        difficulties: [
+          { name: "노말", level: 1750 },
+          { name: "하드", level: 1770 },
+          { name: "나이트메어", level: 1780 },
+        ]
+      },
     ]
   },
   {

@@ -33,6 +33,7 @@ const RAID_DATA = {
   armoche:   { raidName: "파멸의 성채",               raidAlias: "아르모체",  raidTag: "4막",   maxPlayers: 8,  difficulties: ["노말", "하드"] },
   kazeros:   { raidName: "최후의 날",                 raidAlias: "카제로스",  raidTag: "종막",  maxPlayers: 8,  difficulties: ["노말", "하드"] },
   serka:     { raidName: "세르카",                    raidAlias: "세르카",    raidTag: "그림자", maxPlayers: 4, difficulties: ["노말", "하드", "나이트메어"] },
+  belgardin: { raidName: "벨가르딘",                  raidAlias: "벨가르딘",  raidTag: "그림자", maxPlayers: 8, difficulties: ["노말", "하드", "나이트메어"] },
   arsenous:  { raidName: "아르세노스",                raidAlias: "지평의 성당", raidTag: "성당", maxPlayers: 4, difficulties: ["1단계", "2단계", "3단계"] },
 }
 
@@ -44,6 +45,7 @@ const RAID_SELECT_OPTIONS = [
   { label: "아르모체 (4막)",      value: "armoche",   description: "파멸의 성채 · 8인" },
   { label: "카제로스 (종막)",     value: "kazeros",   description: "최후의 날 · 8인" },
   { label: "세르카 (그림자)",     value: "serka",     description: "세르카 · 4인" },
+  { label: "벨가르딘 (그림자)",   value: "belgardin", description: "벨가르딘 · 8인" },
   { label: "지평의 성당 (어비스)", value: "arsenous",  description: "아르세노스 · 4인" },
 ]
 
@@ -283,6 +285,7 @@ export async function POST(request) {
           "아르모체":   ["노말", "하드"],
           "카제로스":   ["노말", "하드"],
           "세르카":     ["노말", "하드", "나이트메어"],
+          "벨가르딘":   ["노말", "하드", "나이트메어"],
           "지평의성당": ["1단계", "2단계", "3단계"],
         }
         const difficulties = DIFFICULTY_MAP[raidOption] || ["노말", "하드"]
@@ -1420,6 +1423,7 @@ export async function POST(request) {
           "아르모체":   "armoche",
           "카제로스":   "kazeros",
           "세르카":     "serka",
+          "벨가르딘":   "belgardin",
           "지평의성당": "arsenous",
         }
         const raidKey  = ALIAS_TO_KEY[raidAlias]

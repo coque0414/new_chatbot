@@ -16,6 +16,7 @@ const RAID_CHOICES = [
   { name: "아르모체",   value: "아르모체" },
   { name: "카제로스",   value: "카제로스" },
   { name: "세르카",     value: "세르카" },
+  { name: "벨가르딘",   value: "벨가르딘" },
   { name: "지평의성당", value: "지평의성당" },
 ]
 
