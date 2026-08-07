@@ -3,9 +3,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import Raid from "@/lib/models/Raid"
-import { sendRaidAnnouncement, sendTrainAnnouncement } from "@/lib/discord"
 import { getLoaWeekStart } from "@/lib/loaWeek"
 import { incrementStat } from "@/lib/stats"
+import { createRaid } from "@/lib/raidService"
 
 // ── IP 기반 Rate Limit (POST /api/raids: 1분에 10회) ──
 const raidCreateRateLimit = new Map()
@@ -51,6 +51,7 @@ export async function POST(request) {
       hostNsuRoles,       // { "1": "dealer"|"support", ... } | null
       difficultyLevel,    // "헤딩" | "트라이" | "클경" | "반숙" | "숙련" | "숙제" | null
       trains,             // N종 기차 모드: 레이드 배열
+      trainLabel,
       notifyMinutesBefore: rawNotify,
       totalRounds: rawTotalRounds,
     } = body
@@ -80,158 +81,23 @@ export async function POST(request) {
 
     const hostUserId = session.user.discordId || session.user.id
 
-    // ===== N종 기차 모드 =====
-    if (trains && Array.isArray(trains) && trains.length >= 2) {
-      const trainLabelText = body.trainLabel || `${trains.length}종 기차`
-
-      const participants = hostRole && hostRole !== "none" ? [{
-        userId: hostUserId,
-        userName: session.user.name,
-        userImage: session.user.image,
-        role: hostRole,
-        characterName:        hostCharacter?.name        || null,
-        characterClass:       hostCharacter?.class       || null,
-        characterLevel:       hostCharacter?.level       || null,
-        characterCombatPower: hostCharacter?.combatPower || null,
-      }] : []
-
-      // 기차 전체를 Raid 1개 도큐먼트로 저장
-      const raid = await Raid.create({
-        // 대표 정보 (첫 번째 레이드 기준)
-        raidName: trains[0].raidName,
-        raidAlias: trains[0].raidAlias,
-        raidTag: trains[0].raidTag,
-        difficulty: trains[0].difficulty,
-        maxPlayers,
-        date: date || "",
-        time: time || "",
-        isMobaChul: isMobaChul || false,
-        difficulty_level: difficultyLevel || null,
-        discordChannelId,
-        guildId,
-        hostId: hostUserId,
-        hostName: session.user.name,
-        hostImage: session.user.image,
-        participants,
-        status: "모집중",
-        notifyMinutesBefore,
-        // 기차 전용 필드
-        isTrain: true,
-        trainLabel: trainLabelText,
-        trainRaids: trains.map((t, i) => ({
-          raidAlias: t.raidAlias,
-          raidTag: t.raidTag,
-          raidName: t.raidName,
-          difficulty: t.difficulty,
-          maxPlayers: t.maxPlayers || maxPlayers,
-          order: i + 1,
-        })),
-      })
-
-      // Discord 메시지 전송
-      if (discordChannelId) {
-        try {
-          const discordMessageId = await sendTrainAnnouncement(
-            discordChannelId,
-            {
-              trainLabel: trainLabelText,
-              maxPlayers,
-              isMobaChul: isMobaChul || false,
-              date: date || "",
-              time: time || "",
-              raids: trains.map(t => ({ raidAlias: t.raidAlias, raidTag: t.raidTag, difficulty: t.difficulty })),
-            },
-            session.user.name,
-            raid._id.toString(),
-            participants
-          )
-          await Raid.findByIdAndUpdate(raid._id, { discordMessageId })
-        } catch (e) {
-          console.error("기차 Discord 메시지 전송 실패:", e)
-        }
-      }
-
-      after(() => incrementStat("raidsCreated.web"))
-      return Response.json({ success: true, raid })
-    }
-
-    // ===== 단일 레이드 모드 =====
-    const participants = hostRole && hostRole !== "none" ? [{
-      userId: hostUserId,
-      userName: session.user.name,
-      userImage: session.user.image,
-      role: hostRole,
-      characterName:        hostCharacter?.name        || null,
-      characterClass:       hostCharacter?.class       || null,
-      characterLevel:       hostCharacter?.level       || null,
-      characterCombatPower: hostCharacter?.combatPower || null,
-    }] : []
-
-    // N수 주최자 rounds 구성
-    const buildRounds = () => {
-      if (totalRounds < 2) return []
-      return Array.from({ length: totalRounds }, (_, i) => {
-        const order = i + 1
-        const roundParticipants = []
-        const hc = hostNsuCharacters?.[order]
-        if (hc?.name) {
-          const role = hostNsuRoles?.[order] || "dealer"
-          roundParticipants.push({
-            userId: hostUserId,
-            userName: session.user.name,
-            userImage: session.user.image,
-            role,
-            characterName: hc.name || null,
-            characterClass: hc.class || null,
-            characterLevel: hc.level || null,
-            characterCombatPower: hc.combatPower || null,
-          })
-        }
-        return { order, participants: roundParticipants }
-      })
-    }
-
-    // N수이고 주최자가 있으면 top-level participants는 비움 (rounds에만 추가)
-    const topParticipants = totalRounds >= 2 ? [] : participants
-
-    // 1. MongoDB 먼저 저장
-    const raid = await Raid.create({
-      raidName,
-      raidAlias,
-      raidTag,
-      difficulty,
-      maxPlayers,
-      date,
-      time,
-      isMobaChul: isMobaChul || false,
-      difficulty_level: difficultyLevel || null,
-      discordChannelId,
-      guildId,
+    const raid = await createRaid({
       hostId: hostUserId,
       hostName: session.user.name,
       hostImage: session.user.image,
-      participants: topParticipants,
-      status: "모집중",
+      raidName, raidAlias, raidTag, difficulty, maxPlayers,
+      date, time, isMobaChul,
+      discordChannelId, guildId,
+      hostRole,
+      hostCharacter,
+      hostNsuCharacters,
+      hostNsuRoles,
+      difficultyLevel,
+      trains,
+      trainLabel,
       notifyMinutesBefore,
       totalRounds,
-      rounds: buildRounds(),
     })
-
-    // 2. Discord 메시지 전송
-    if (discordChannelId) {
-      try {
-        const discordMessageId = await sendRaidAnnouncement(
-          discordChannelId,
-          { raidName, raidAlias, difficulty, maxPlayers, date, time, isMobaChul, totalRounds, difficulty_level: difficultyLevel || null, rounds: buildRounds() },
-          session.user.name,
-          raid._id.toString(),
-          participants
-        )
-        await Raid.findByIdAndUpdate(raid._id, { discordMessageId })
-      } catch (e) {
-        console.error("Discord 메시지 전송 실패:", e)
-      }
-    }
 
     after(() => incrementStat("raidsCreated.web"))
     return Response.json({ success: true, raid })
