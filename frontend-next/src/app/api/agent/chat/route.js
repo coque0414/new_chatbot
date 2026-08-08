@@ -92,12 +92,13 @@ ${raidAliases.join(", ")}
 - 충분한 정보가 모이면 반드시 update_raid_draft 도구를 호출하세요. 확실하지 않은 필드는 생략하세요.
 - hostRole이 "none"이면 캐릭터 관련 질문은 생략하세요.
 - 등록된 캐릭터가 하나도 없다면 "/characters에서 캐릭터부터 등록해주세요"라고 안내하세요.
-- hostCharacterName은 반드시 위 등록 캐릭터 목록의 이름과 정확히 일치해야 합니다. 목록에 없는 이름은 지어내지 마세요.`
+- hostCharacterName은 반드시 위 등록 캐릭터 목록의 이름과 정확히 일치해야 합니다. 목록에 없는 이름은 지어내지 마세요.
+- 각 유저 메시지 앞에는 "[현재 초안: {...}]" 형태로 그 시점의 초안 상태가 JSON으로 붙습니다. 이미 채워진 필드는 다시 묻지 마세요.`
 }
 
-// 매 턴 바뀌는 현재 초안 상태 — 캐싱 대상 프롬프트와 분리된 블록으로 별도 전달
-function buildDraftStateText(draft) {
-  return `## 현재까지 채워진 초안 상태 (JSON)\n${JSON.stringify({
+// 매 턴 바뀌는 현재 초안 상태 — 캐싱 대상 시스템 프롬프트와 분리해 유저 메시지 앞에 짧게 붙임
+function buildDraftPrefix(draft) {
+  return `[현재 초안: ${JSON.stringify({
     raidAlias: draft.raidAlias,
     difficulty: draft.difficulty,
     difficultyLevel: draft.difficultyLevel,
@@ -106,7 +107,7 @@ function buildDraftStateText(draft) {
     isMobaChul: draft.isMobaChul,
     hostRole: draft.hostRole,
     hostCharacterName: draft.hostCharacterName,
-  })}\n이미 채워진 필드는 다시 묻지 마세요.`
+  })}]`
 }
 
 export async function POST(request) {
@@ -154,20 +155,20 @@ export async function POST(request) {
     const { dateStr, dayName } = todayKST()
     const raidAliases = getRaidAliasList()
     const staticSystemPrompt = buildStaticSystemPrompt({ dateStr, dayName, characters, raidAliases })
-    const draftStateText = buildDraftStateText(agentSession.draft)
 
-    const history = agentSession.messages.map(m => ({
+    // 최근 2턴(user+assistant 페어, 최대 4개 메시지)만 맥락으로 포함 — 그 이전 히스토리는 요약 없이 버림
+    const recentHistory = agentSession.messages.slice(-4).map(m => ({
       role: m.role,
       content: m.content,
     }))
-    history.push({ role: "user", content: message })
+    const draftPrefix = buildDraftPrefix(agentSession.draft)
+    const history = [...recentHistory, { role: "user", content: `${draftPrefix}\n${message}` }]
 
     const response = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 400,
       system: [
         { type: "text", text: staticSystemPrompt, cache_control: { type: "ephemeral" } },
-        { type: "text", text: draftStateText },
       ],
       tools: [UPDATE_RAID_DRAFT_TOOL],
       tool_choice: { type: "auto" },
