@@ -295,6 +295,11 @@ system 프롬프트를 두 부분으로 분리:
 ### UI (`chat/page.js`)
 좌: 채팅(유저 메시지 우측/앰버, 에이전트 좌측), 우: 고정폭 초안 패널(읽기 전용, 입력 필드 없음). **필드 수정은 전부 채팅 재발화로만 처리** — 패널은 "이대로 만들기" 버튼(`ready` 여부에 따라 강조 스타일 전환)만 있음. 확정 성공 시 생성된 레이드 링크(`/raids/[id]`) + "새 레이드 만들기" 버튼으로 세션 초기화. 새로고침 시 세션 유지는 미지원(새 대화로 시작).
 
+### 레이드별 난이도 체계
+`difficulty`는 고정 enum이 아니라 레이드마다 다른 `raidCatalog.js`의 `difficulties[].name` 기준이다. 대부분(카제로스 레이드 6종)은 노말/하드 2단계지만, 세르카·벨가르딘은 나이트메어 포함 3단계이고, 지평의 성당은 노말/하드가 아니라 1단계/2단계/3단계다.
+
+`raidCatalog.js`의 `aliases` 구조: 레이드별 일반 별칭(`aliases`, 예: 벨가르딘 → "벨가")과 "이름+난이도 복합" 별칭(`difficultyAliases`, 예: "노벨"→벨가르딘+노말)이 함께 있고, `matchAliasFromText()`가 이걸로 `raidAlias`+`difficulty`를 동시에 확정할 수 있다.
+
 ---
 
 ## Discord interactions 패턴 (`app/api/discord/interactions/route.js`, 2600+ 라인)
