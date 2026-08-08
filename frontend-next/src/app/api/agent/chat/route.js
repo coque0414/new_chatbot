@@ -54,6 +54,23 @@ function todayKST() {
   return { dateStr, dayName: dayNames[kst.getUTCDay()] }
 }
 
+// missingFields 필드명 → 되물을 한국어 질문 문구
+const MISSING_FIELD_QUESTIONS = {
+  raidAlias: "어떤 레이드로 예약할까요?",
+  difficulty: "난이도는 노말/하드 중 어느 쪽인가요?",
+  difficultyLevel: "숙련도는 헤딩/트라이/클경/반숙/숙련/숙제 중 어느 쪽인가요?",
+  date: "날짜는 언제로 할까요?",
+  time: "시간은 몇 시로 할까요?",
+  hostRole: "호스트 역할을 딜러/서포터/모집만 중에서 알려주세요.",
+  hostCharacterName: "어떤 캐릭터로 참가하실 건가요?",
+}
+
+// Claude가 텍스트 없이 툴 호출만 하고 끝내는 경우를 대비한 서버 사이드 안전망 (API 재호출 없음)
+function buildFallbackReply(missingFields) {
+  if (missingFields.length === 0) return "모든 정보가 확인됐어요. 이대로 만들까요?"
+  return missingFields.slice(0, 2).map(f => MISSING_FIELD_QUESTIONS[f] || f).join(" ")
+}
+
 function computeMissingFields(draft) {
   const missing = []
   if (!draft.raidAlias) missing.push("raidAlias")
@@ -89,9 +106,11 @@ ${raidAliases.join(", ")}
 
 ## 지침
 - 정보가 부족하면 자연스러운 한국어로 되물으세요. 한 번에 너무 많은 질문을 하지 마세요.
+- raidAlias, difficulty, difficultyLevel, date, time, maxPlayers, isMobaChul는 캐릭터 등록 여부와 무관하게 항상 정상적으로 추출하세요. 캐릭터가 없다는 이유로 이 필드들의 추출을 미루거나 대화를 막지 마세요.
 - 충분한 정보가 모이면 반드시 update_raid_draft 도구를 호출하세요. 확실하지 않은 필드는 생략하세요.
-- hostRole이 "none"이면 캐릭터 관련 질문은 생략하세요.
-- 등록된 캐릭터가 하나도 없다면 "/characters에서 캐릭터부터 등록해주세요"라고 안내하세요.
+- 이번 턴에 확실하게 파악한 필드가 하나라도 있다면, 모든 필수 필드가 채워지지 않았더라도 반드시 update_raid_draft를 호출해서 그 필드만이라도 반영하세요. 텍스트 응답만 하고 툴 호출을 생략하지 마세요. 부족한 필드에 대한 질문은 reply 텍스트로, 확실한 필드 반영은 툴 호출로 — 매 턴 둘 다 함께 수행하세요.
+- hostRole이 "none"이면 캐릭터 관련 질문/안내는 전혀 하지 마세요.
+- 등록된 캐릭터가 하나도 없는 경우, hostRole을 "dealer" 또는 "support"로 확정해야 하는 시점(사용자가 참가 의사를 밝혔거나 hostRole을 물어야 할 때)에만 "/characters에서 캐릭터부터 등록해주세요"라고 안내하세요. 그 외의 필드 수집은 평소대로 계속 진행하세요.
 - hostCharacterName은 반드시 위 등록 캐릭터 목록의 이름과 정확히 일치해야 합니다. 목록에 없는 이름은 지어내지 마세요.
 - 각 유저 메시지 앞에는 "[현재 초안: {...}]" 형태로 그 시점의 초안 상태가 JSON으로 붙습니다. 이미 채워진 필드는 다시 묻지 마세요.`
 }
@@ -206,6 +225,10 @@ export async function POST(request) {
     const missingFields = computeMissingFields(draft)
     draft.missingFields = missingFields
     const ready = missingFields.length === 0
+
+    if (!reply.trim()) {
+      reply = buildFallbackReply(missingFields)
+    }
 
     agentSession.messages.push({ role: "user", content: message, toolCall: null, timestamp: new Date() })
     agentSession.messages.push({ role: "assistant", content: reply, toolCall: toolInput, timestamp: new Date() })
