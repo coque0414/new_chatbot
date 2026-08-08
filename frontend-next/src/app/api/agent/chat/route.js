@@ -4,13 +4,12 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import AgentSession from "@/lib/models/AgentSession"
 import UserCharacters from "@/lib/models/UserCharacters"
-import { RAIDS, resolveAliasFromText } from "@/lib/raidCatalog"
+import { RAIDS } from "@/lib/raidCatalog"
+import { DIFFICULTY_LEVELS, matchAliasFromText, matchDifficultyLevelFromText } from "@/lib/agentExtraction"
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const MAX_TURNS = 40
-
-const DIFFICULTY_LEVELS = ["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"]
 
 const UPDATE_RAID_DRAFT_TOOL = {
   name: "update_raid_draft",
@@ -251,21 +250,17 @@ export async function POST(request) {
       }
     }
 
-    // difficultyLevel은 Claude 판단을 그대로 믿지 않고, 이번 턴 원문에 그 값이 실제로 있을 때만 반영
-    // (없으면 Claude가 뭘 보냈든 무시하고 기존 값 유지 — hallucination 방지)
-    if (toolInput && Object.prototype.hasOwnProperty.call(toolInput, "difficultyLevel")) {
-      const claimed = toolInput.difficultyLevel
-      if (DIFFICULTY_LEVELS.includes(claimed) && message.includes(claimed)) {
-        draft.difficultyLevel = claimed
-      }
-    }
-
-    // 별칭 테이블로 원문을 직접 스캔해 raidAlias(+difficulty)를 결정론적으로 확정 —
-    // 매칭되면 Claude의 판단(toolInput)보다 이 결과를 우선한다 ("노벨"→하드 오판 방지)
-    const aliasMatch = resolveAliasFromText(message)
+    // 원문 텍스트 직접 대조로 결정론적으로 확정하는 필드들 — 매칭되면 Claude의 판단(toolInput)보다 우선.
+    // ("노벨"을 하드로 오판하거나, 안 물어본 difficultyLevel을 지어내는 등 모델 판단이 가끔 틀려서 도입)
+    const aliasMatch = matchAliasFromText(message)
     if (aliasMatch) {
       draft.raidAlias = aliasMatch.raidAlias
       if (aliasMatch.difficulty) draft.difficulty = aliasMatch.difficulty
+    }
+
+    const matchedDifficultyLevel = matchDifficultyLevelFromText(message)
+    if (matchedDifficultyLevel) {
+      draft.difficultyLevel = matchedDifficultyLevel
     }
 
     // raidAlias는 카탈로그 기준으로 그라운딩 (raidTag/maxPlayers는 Claude가 지어내지 않고 카탈로그에서 파생)
