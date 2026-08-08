@@ -45,3 +45,11 @@ export function matchDifficultyLevelFromText(text) {
   }
   return null
 }
+
+const MOBACHUL_KEYWORDS = ["모바출", "모이면", "모이는대로", "채워지면", "차면", "다 모이면", "어느정도 모이면"]
+
+// 원문에 모바출을 암시하는 키워드가 있으면 true, 없으면 실제 기본값(false, Raid.js/raid-create 폼과 동일)
+export function matchIsMobaChulFromText(text) {
+  if (!text) return false
+  return MOBACHUL_KEYWORDS.some(keyword => text.includes(keyword))
+}

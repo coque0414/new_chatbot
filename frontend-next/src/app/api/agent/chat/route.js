@@ -5,7 +5,7 @@ import { connectDB } from "@/lib/mongodb"
 import AgentSession from "@/lib/models/AgentSession"
 import UserCharacters from "@/lib/models/UserCharacters"
 import { RAIDS } from "@/lib/raidCatalog"
-import { DIFFICULTY_LEVELS, matchAliasFromText, matchDifficultyLevelFromText } from "@/lib/agentExtraction"
+import { DIFFICULTY_LEVELS, matchAliasFromText, matchDifficultyLevelFromText, matchIsMobaChulFromText } from "@/lib/agentExtraction"
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -246,6 +246,7 @@ export async function POST(request) {
       for (const [key, value] of Object.entries(toolInput)) {
         if (key === "ready") continue  // ready는 missingFields 기반으로 서버가 직접 계산
         if (key === "difficultyLevel") continue  // 아래에서 원문 대조 후 별도 반영
+        if (key === "isMobaChul") continue  // 아래에서 원문 키워드 매칭으로 완전히 대체
         if (value !== undefined) draft[key] = value
       }
     }
@@ -262,6 +263,9 @@ export async function POST(request) {
     if (matchedDifficultyLevel) {
       draft.difficultyLevel = matchedDifficultyLevel
     }
+
+    // isMobaChul은 키워드 매칭 결과로 매 턴 확정 (매칭 안 되면 기본값 false — Claude 판단은 완전히 무시)
+    draft.isMobaChul = matchIsMobaChulFromText(message)
 
     // raidAlias는 카탈로그 기준으로 그라운딩 (raidTag/maxPlayers는 Claude가 지어내지 않고 카탈로그에서 파생)
     if (draft.raidAlias) {
