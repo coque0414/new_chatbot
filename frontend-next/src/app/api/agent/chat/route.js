@@ -4,11 +4,13 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { connectDB } from "@/lib/mongodb"
 import AgentSession from "@/lib/models/AgentSession"
 import UserCharacters from "@/lib/models/UserCharacters"
-import { RAIDS } from "@/lib/raidCatalog"
+import { RAIDS, resolveAliasFromText } from "@/lib/raidCatalog"
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const MAX_TURNS = 40
+
+const DIFFICULTY_LEVELS = ["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"]
 
 const UPDATE_RAID_DRAFT_TOOL = {
   name: "update_raid_draft",
@@ -18,7 +20,7 @@ const UPDATE_RAID_DRAFT_TOOL = {
     properties: {
       raidAlias: { type: "string" },
       difficulty: { type: "string", description: "레이드마다 유효한 난이도가 다름 — 시스템 프롬프트의 레이드별 난이도 목록에 있는 값과 정확히 일치해야 함 (예: 노말/하드/나이트메어/1단계 등)" },
-      difficultyLevel: { type: "string", enum: ["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"] },
+      difficultyLevel: { type: "string", enum: DIFFICULTY_LEVELS },
       date: { type: "string", description: "ISO 8601 YYYY-MM-DD, KST 기준" },
       time: { type: "string", description: "HH:mm, KST 기준" },
       maxPlayers: { type: "integer" },
@@ -89,7 +91,7 @@ function todayKST() {
 const MISSING_FIELD_QUESTIONS = {
   raidAlias: "어떤 레이드로 예약할까요?",
   difficulty: "난이도는 노말/하드 중 어느 쪽인가요?",
-  difficultyLevel: "숙련도는 헤딩/트라이/클경/반숙/숙련/숙제 중 어느 쪽인가요?",
+  difficultyLevel: `숙련도는 ${DIFFICULTY_LEVELS.join("/")} 중 어느 쪽인가요?`,
   date: "날짜는 언제로 할까요?",
   time: "시간은 몇 시로 할까요?",
   hostRole: "호스트 역할을 딜러/서포터/모집만 중에서 알려주세요.",
@@ -244,8 +246,26 @@ export async function POST(request) {
     if (toolInput) {
       for (const [key, value] of Object.entries(toolInput)) {
         if (key === "ready") continue  // ready는 missingFields 기반으로 서버가 직접 계산
+        if (key === "difficultyLevel") continue  // 아래에서 원문 대조 후 별도 반영
         if (value !== undefined) draft[key] = value
       }
+    }
+
+    // difficultyLevel은 Claude 판단을 그대로 믿지 않고, 이번 턴 원문에 그 값이 실제로 있을 때만 반영
+    // (없으면 Claude가 뭘 보냈든 무시하고 기존 값 유지 — hallucination 방지)
+    if (toolInput && Object.prototype.hasOwnProperty.call(toolInput, "difficultyLevel")) {
+      const claimed = toolInput.difficultyLevel
+      if (DIFFICULTY_LEVELS.includes(claimed) && message.includes(claimed)) {
+        draft.difficultyLevel = claimed
+      }
+    }
+
+    // 별칭 테이블로 원문을 직접 스캔해 raidAlias(+difficulty)를 결정론적으로 확정 —
+    // 매칭되면 Claude의 판단(toolInput)보다 이 결과를 우선한다 ("노벨"→하드 오판 방지)
+    const aliasMatch = resolveAliasFromText(message)
+    if (aliasMatch) {
+      draft.raidAlias = aliasMatch.raidAlias
+      if (aliasMatch.difficulty) draft.difficulty = aliasMatch.difficulty
     }
 
     // raidAlias는 카탈로그 기준으로 그라운딩 (raidTag/maxPlayers는 Claude가 지어내지 않고 카탈로그에서 파생)

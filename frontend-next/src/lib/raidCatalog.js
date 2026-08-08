@@ -158,3 +158,32 @@ export const RAIDS = [
     ]
   },
 ]
+
+// 원문 텍스트를 직접 스캔해서 raidAlias(+difficulty)를 결정론적으로 확정한다.
+// LLM의 별칭 해석은 가끔 틀리므로("노벨"을 하드로 오판하는 등), 원문에 별칭 문자열이
+// 그대로 포함돼 있으면 모델 판단보다 이 매칭 결과를 우선한다.
+export function resolveAliasFromText(text) {
+  if (!text) return null
+
+  const candidates = []
+  for (const cat of RAIDS) {
+    for (const r of cat.raids) {
+      for (const da of r.difficultyAliases || []) {
+        candidates.push({ matchText: da.alias, raidAlias: r.alias, difficulty: da.difficulty ?? null })
+      }
+      for (const a of r.aliases || []) {
+        candidates.push({ matchText: a, raidAlias: r.alias, difficulty: null })
+      }
+    }
+  }
+
+  // 긴 문자열 우선 매칭 — "지평 2단계"가 "지평"보다 먼저 매칭되도록
+  candidates.sort((a, b) => b.matchText.length - a.matchText.length)
+
+  for (const c of candidates) {
+    if (text.includes(c.matchText)) {
+      return { raidAlias: c.raidAlias, difficulty: c.difficulty }
+    }
+  }
+  return null
+}
