@@ -1,6 +1,6 @@
 .env.local 
 frontend-next/.env.local 
-backend/.env 
+backend/
 node_modules/ 
 .next/ 
 gateway-worker/.env 
