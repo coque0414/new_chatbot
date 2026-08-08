@@ -50,6 +50,14 @@ export const RAIDS = [
         difficulties: [
           { name: "노말", level: 1700 },
           { name: "하드", level: 1720 },
+        ],
+        aliases: ["4막"],
+        difficultyAliases: [
+          { alias: "4막 노말", difficulty: "노말" },
+          { alias: "4막 하드", difficulty: "하드" },
+          { alias: "아르모체" },
+          { alias: "노르모체", difficulty: "노말" },
+          { alias: "하르모체", difficulty: "하드" },
         ]
       },
       {
@@ -60,6 +68,18 @@ export const RAIDS = [
         difficulties: [
           { name: "노말", level: 1710 },
           { name: "하드", level: 1730 },
+        ],
+        aliases: ["종막"],
+        difficultyAliases: [
+          { alias: "종막 노말", difficulty: "노말" },
+          { alias: "종막 하드", difficulty: "하드" },
+          { alias: "카제로스" },
+          { alias: "노제로스", difficulty: "노말" },
+          { alias: "하제로스", difficulty: "하드" },
+          { alias: "카제로스 노말", difficulty: "노말" },
+          { alias: "카제로스 하드", difficulty: "하드" },
+          { alias: "노제", difficulty: "노말" },
+          { alias: "하제", difficulty: "하드" },
         ]
       },
     ]
@@ -76,6 +96,15 @@ export const RAIDS = [
           { name: "노말", level: 1710 },
           { name: "하드", level: 1730 },
           { name: "나이트메어", level: 1740 },
+        ],
+        aliases: ["세르카"],
+        difficultyAliases: [
+          { alias: "세르카 노말", difficulty: "노말" },
+          { alias: "세르카 하드", difficulty: "하드" },
+          { alias: "세르카 나메", difficulty: "나이트메어" },
+          { alias: "노르카", difficulty: "노말" },
+          { alias: "하르카", difficulty: "하드" },
+          { alias: "나르카", difficulty: "나이트메어" },
         ]
       },
       {
@@ -87,6 +116,18 @@ export const RAIDS = [
           { name: "노말", level: 1750 },
           { name: "하드", level: 1770 },
           { name: "나이트메어", level: 1780 },
+        ],
+        aliases: ["벨가"],
+        difficultyAliases: [
+          { alias: "벨가 노말", difficulty: "노말" },
+          { alias: "벨가 하드", difficulty: "하드" },
+          { alias: "벨가 나메", difficulty: "나이트메어" },
+          { alias: "노벨", difficulty: "노말" },
+          { alias: "하벨", difficulty: "하드" },
+          { alias: "나벨", difficulty: "나이트메어" },
+          { alias: "노가르딘", difficulty: "노말" },
+          { alias: "하가르딘", difficulty: "하드" },
+          { alias: "나가르딘", difficulty: "나이트메어" },
         ]
       },
     ]
@@ -103,6 +144,15 @@ export const RAIDS = [
           { name: "1단계", level: 1700 },
           { name: "2단계", level: 1720 },
           { name: "3단계", level: 1750 },
+        ],
+        aliases: ["지평", "성당", "성심당", "지평막걸리"],
+        difficultyAliases: [
+          { alias: "지평 1단계", difficulty: "1단계" },
+          { alias: "지평 2단계", difficulty: "2단계" },
+          { alias: "지평 3단계", difficulty: "3단계" },
+          { alias: "성당 1단계", difficulty: "1단계" },
+          { alias: "성당 2단계", difficulty: "2단계" },
+          { alias: "성당 3단계", difficulty: "3단계" },
         ]
       },
     ]

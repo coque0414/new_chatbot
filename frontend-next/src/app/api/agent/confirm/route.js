@@ -48,6 +48,12 @@ export async function POST(request) {
       return Response.json({ error: "유효하지 않은 레이드입니다." }, { status: 400 })
     }
 
+    // raidAlias + difficulty 조합이 카탈로그에 실제로 존재하는 조합인지 최종 검증 (chat 단계 프롬프트 유도의 이중 방어)
+    const validDifficulty = catalogRaid.difficulties.some(d => d.name === draft.difficulty)
+    if (!validDifficulty) {
+      return Response.json({ error: "유효하지 않은 난이도 조합입니다." }, { status: 400 })
+    }
+
     // Discord 공고 채널 (GuildSettings 기준 — 웹 폼과 동일한 소스)
     const guildSettings = await GuildSettings.findOne({ guildId: agentSession.guildId })
     const discordChannelId = guildSettings?.announcementChannelId || null

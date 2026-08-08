@@ -17,7 +17,7 @@ const UPDATE_RAID_DRAFT_TOOL = {
     type: "object",
     properties: {
       raidAlias: { type: "string" },
-      difficulty: { type: "string", enum: ["노말", "하드"] },
+      difficulty: { type: "string", description: "레이드마다 유효한 난이도가 다름 — 시스템 프롬프트의 레이드별 난이도 목록에 있는 값과 정확히 일치해야 함 (예: 노말/하드/나이트메어/1단계 등)" },
       difficultyLevel: { type: "string", enum: ["헤딩", "트라이", "클경", "반숙", "숙련", "숙제"] },
       date: { type: "string", description: "ISO 8601 YYYY-MM-DD, KST 기준" },
       time: { type: "string", description: "HH:mm, KST 기준" },
@@ -32,6 +32,37 @@ const UPDATE_RAID_DRAFT_TOOL = {
 
 function getRaidAliasList() {
   return RAIDS.flatMap(cat => cat.raids.map(r => r.alias))
+}
+
+// 레이드별 유효 difficulty 목록 (전역 enum이 아니라 레이드마다 다름 — raidCatalog.js가 정답 소스)
+function buildDifficultiesSection() {
+  const lines = []
+  for (const cat of RAIDS) {
+    for (const r of cat.raids) {
+      lines.push(`- ${r.alias}: ${r.difficulties.map(d => d.name).join("/")}`)
+    }
+  }
+  return lines.join("\n")
+}
+
+// "노벨", "4막 하드" 같이 raidAlias+difficulty를 동시에 확정하는 별칭 테이블
+function buildAliasSection() {
+  const lines = []
+  for (const cat of RAIDS) {
+    for (const r of cat.raids) {
+      if (!r.aliases && !r.difficultyAliases) continue
+      const parts = []
+      if (r.aliases?.length) parts.push(`일반 별칭: ${r.aliases.join(", ")}`)
+      if (r.difficultyAliases?.length) {
+        const compound = r.difficultyAliases
+          .map(a => a.difficulty ? `${a.alias}→${a.difficulty}` : a.alias)
+          .join(", ")
+        parts.push(`난이도 지정 별칭(→difficulty): ${compound}`)
+      }
+      lines.push(`- ${r.alias}(${r.name}): ${parts.join(" / ")}`)
+    }
+  }
+  return lines.join("\n")
 }
 
 function findRaidByAlias(alias) {
@@ -103,6 +134,14 @@ ${charList}
 ## 유효한 레이드 별칭(raidAlias) 목록
 ${raidAliases.join(", ")}
 이 목록에 없는 이름은 raidAlias로 사용하지 마세요.
+
+## 레이드별 유효 난이도(difficulty) 목록
+${buildDifficultiesSection()}
+난이도는 레이드마다 다릅니다 — 전역으로 "노말/하드"만 있는 게 아닙니다. difficulty 값은 반드시 해당 raidAlias 줄에 나열된 값과 정확히 일치해야 합니다. 목록에 없는 값이면 지어내지 말고 되물으세요.
+
+## 별칭 테이블 (raidAlias, 경우에 따라 difficulty까지 동시에 확정)
+${buildAliasSection()}
+위 표에서 "난이도 지정 별칭"이 사용자 발화에 나오면 raidAlias와 difficulty를 한 번에 확정하세요 (예: "노벨" → raidAlias: 벨가르딘, difficulty: 노말). 화살표 없는 항목은 raidAlias만 가리킵니다.
 
 ## 지침
 - 정보가 부족하면 자연스러운 한국어로 되물으세요. 한 번에 너무 많은 질문을 하지 마세요.
