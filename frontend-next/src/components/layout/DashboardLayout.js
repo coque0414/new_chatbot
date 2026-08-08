@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { icon: Plus,         label: "레이드 생성", href: "/raid-create",  key: "raid-create" },
   { icon: LayoutList,   label: "레이드 게시판", href: "/board",      key: "board" },
   { icon: CalendarRange, label: "고정 레이드", href: "/fixed-raids",  key: "fixed-raids" },
-  { icon: MessageSquare,label: "공략 챗봇",   href: "/chat",         key: "chat" },
+  { icon: MessageSquare,label: "AI 레이드 생성",   href: "/chat",         key: "chat" },
   { icon: Settings,     label: "봇 설정",     href: "/bot-settings", key: "bot-settings" },
 ]
 
