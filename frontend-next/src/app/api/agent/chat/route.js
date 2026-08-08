@@ -264,8 +264,15 @@ export async function POST(request) {
       draft.difficultyLevel = matchedDifficultyLevel
     }
 
-    // isMobaChul은 키워드 매칭 결과로 매 턴 확정 (매칭 안 되면 기본값 false — Claude 판단은 완전히 무시)
-    draft.isMobaChul = matchIsMobaChulFromText(message)
+    // isMobaChul도 difficultyLevel과 동일하게 "매칭 안 되면 기존 값 유지" 원칙.
+    // 단, 세션 첫 턴(아직 한 번도 채워진 적 없음 = 지금까지 저장된 메시지가 없음)에는
+    // 매칭이 없으면 실제 기본값(false)으로 초기화한다. Claude 판단은 완전히 무시.
+    const matchedIsMobaChul = matchIsMobaChulFromText(message)
+    if (matchedIsMobaChul === true) {
+      draft.isMobaChul = true
+    } else if (agentSession.messages.length === 0) {
+      draft.isMobaChul = false
+    }
 
     // raidAlias는 카탈로그 기준으로 그라운딩 (raidTag/maxPlayers는 Claude가 지어내지 않고 카탈로그에서 파생)
     if (draft.raidAlias) {

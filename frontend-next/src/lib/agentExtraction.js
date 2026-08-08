@@ -48,8 +48,9 @@ export function matchDifficultyLevelFromText(text) {
 
 const MOBACHUL_KEYWORDS = ["모바출", "모이면", "모이는대로", "채워지면", "차면", "다 모이면", "어느정도 모이면"]
 
-// 원문에 모바출을 암시하는 키워드가 있으면 true, 없으면 실제 기본값(false, Raid.js/raid-create 폼과 동일)
+// 원문에 모바출을 암시하는 키워드가 있으면 true, 없으면 null("이번 턴엔 신호 없음" — false 아님).
+// difficultyLevel과 동일하게 "매칭 안 되면 기존 값 유지"가 원칙이라, false 기본값 적용은 호출부(세션 첫 턴 여부 판단)의 책임.
 export function matchIsMobaChulFromText(text) {
-  if (!text) return false
-  return MOBACHUL_KEYWORDS.some(keyword => text.includes(keyword))
+  if (!text) return null
+  return MOBACHUL_KEYWORDS.some(keyword => text.includes(keyword)) ? true : null
 }
