@@ -4,8 +4,9 @@ import { useSession } from "next-auth/react"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Hash, Send, Loader2, RotateCcw, CheckCircle2, ExternalLink } from "lucide-react"
+import { Send, Loader2, RotateCcw, CheckCircle2, ExternalLink } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
+import GuildSelectDropdown from "@/components/GuildSelectDropdown"
 import { getTheme } from "@/lib/themes"
 
 const TURN_CAP_MESSAGE = "대화가 길어졌어요, 새로 시작해주세요."
@@ -178,9 +179,6 @@ export default function ChatPage() {
   const theme = getTheme(themeId)
   const d = theme.isDark
 
-  const announcementChannelId = guildSettings?.announcementChannelId || null
-  const announcementChannelName = guildSettings?.announcementChannelName || null
-
   const inputClass = `w-full px-4 py-3 rounded-xl border text-sm outline-none transition-colors
     ${d
       ? "bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-amber-500/50"
@@ -200,46 +198,22 @@ export default function ChatPage() {
         </p>
       </div>
 
-      {/* Discord 서버 선택 — raid-create/page.js:353-386과 동일한 패턴 재사용 */}
+      {/* Discord 서버 선택 — components/GuildSelectDropdown.js (raid-create/page.js와 공유) */}
       <div className="mb-6 max-w-md">
-        <label className={`block text-sm font-medium mb-2 ${d ? "text-gray-300" : "text-gray-700"}`}>
-          <Hash size={14} className="inline mr-1" />Discord 서버 *
-        </label>
-        <select
-          value={selectedGuild?.id || ""}
-          onChange={e => {
-            const guild = guilds.find(g => g.id === e.target.value)
+        <GuildSelectDropdown
+          guilds={guilds}
+          loadingGuilds={loadingGuilds}
+          selectedGuild={selectedGuild}
+          guildSettings={guildSettings}
+          guildSettingsLoading={loadingSettings}
+          onGuildChange={(guild) => {
             resetSession()
             if (guild) handleGuildSelect(guild)
             else { setSelectedGuild(null); setGuildSettings(null) }
           }}
-          className={inputClass}>
-          <option value="">{loadingGuilds ? "서버 목록 불러오는 중..." : "서버를 선택하세요"}</option>
-          {guilds.map(guild => (
-            <option key={guild.id} value={guild.id}>{guild.name}</option>
-          ))}
-        </select>
-
-        {selectedGuild && (
-          <div className={`mt-2 px-4 py-3 rounded-xl border text-sm
-            ${loadingSettings
-              ? d ? "border-white/10 text-gray-500" : "border-purple-100 text-gray-400"
-              : announcementChannelId
-                ? d ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : d ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-amber-200 bg-amber-50 text-amber-700"
-            }`}>
-            {loadingSettings
-              ? "공고 채널 정보 불러오는 중..."
-              : announcementChannelId
-                ? `📢 공고 채널: #${announcementChannelName || announcementChannelId}`
-                : (
-                  <span>
-                    ⚠️ 봇 설정에서 공고 채널을 먼저 지정해주세요.{" "}
-                    <a href="/bot-settings" className="underline">봇 설정으로 이동</a>
-                  </span>
-                )}
-          </div>
-        )}
+          d={d}
+          inputClass={inputClass}
+        />
       </div>
 
       {!selectedGuild ? (
