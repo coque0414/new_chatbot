@@ -246,7 +246,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
           { icon: "➕", label: "레이드 예약 생성", href: "/raid-create", primary: true },
-          { icon: "💬", label: "공략 챗봇", href: "/chat" },
+          { icon: "💬", label: "AI 레이드 생성", href: "/chat" },
           { icon: "⚙️", label: "봇 설정", href: "/bot-settings" },
         ].map((btn) => (
           <a key={btn.label} href={btn.href}>
