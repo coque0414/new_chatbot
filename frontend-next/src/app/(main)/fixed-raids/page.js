@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Trash2, X, Shield, Pencil } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
+import GuildPillSelector from "@/components/GuildPillSelector"
 import { getTheme } from "@/lib/themes"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -97,7 +98,6 @@ export default function FixedRaidsPage() {
       .then(data => {
         if (!data.guilds?.length) return
         setGuilds(data.guilds)
-        setSelectedGuildId(data.guilds[0].id)
       })
       .catch(() => {})
   }, [status])
@@ -345,27 +345,13 @@ export default function FixedRaidsPage() {
       </div>
 
       {/* 서버 탭 */}
-      {guilds.length > 0 && (
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {guilds.map(g => (
-            <button
-              key={g.id}
-              onClick={() => setSelectedGuildId(g.id)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all border
-                ${selectedGuildId === g.id
-                  ? d ? "border-amber-500/50 bg-amber-500/10 text-amber-400" : "border-purple-400 bg-purple-50 text-purple-700"
-                  : d ? "border-white/10 text-gray-400 hover:bg-white/5" : "border-purple-100 text-gray-500 hover:bg-purple-50"
-                }`}>
-              {g.icon
-                ? <img src={g.icon} alt={g.name} className="w-5 h-5 rounded-full" />
-                : <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
-                    ${d ? "bg-white/10" : "bg-purple-100 text-purple-600"}`}>{g.name[0]}</span>
-              }
-              {g.name}
-            </button>
-          ))}
-        </div>
-      )}
+      <GuildPillSelector
+        guilds={guilds}
+        loadingGuilds={false}
+        selectedGuildId={selectedGuildId}
+        onSelect={setSelectedGuildId}
+        d={d}
+      />
 
       {loading ? (
         <div className={`text-sm text-center py-12 ${d ? "text-gray-500" : "text-gray-400"}`}>
