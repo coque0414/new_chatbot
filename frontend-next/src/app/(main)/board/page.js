@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import DashboardLayout from "@/components/layout/DashboardLayout"
+import GuildPillSelector from "@/components/GuildPillSelector"
 import { getTheme } from "@/lib/themes"
 import { weekRangeStrings, formatWeekLabel, formatDateLabel, groupRaidsByDate } from "@/lib/loaWeek"
 
@@ -41,9 +42,7 @@ export default function BoardPage() {
     fetch("/api/discord/guilds")
       .then(r => r.json())
       .then(data => {
-        const list = data.guilds || []
-        setGuilds(list)
-        if (list.length > 0) setSelectedGuildId(list[0].id)
+        setGuilds(data.guilds || [])
       })
       .catch(e => console.error("서버 목록 불러오기 실패:", e))
       .finally(() => setGuildsLoading(false))
@@ -74,10 +73,6 @@ export default function BoardPage() {
     const newOffset = weekOffset + delta
     if (newOffset < 0) return
     setWeekOffset(newOffset)
-  }
-
-  const handleGuildSelect = (guildId) => {
-    setSelectedGuildId(guildId)
   }
 
   if (!mounted || status === "loading") {
@@ -212,34 +207,13 @@ export default function BoardPage() {
       ) : (
         <>
           {/* 탭 목록 */}
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
-            {guilds.map(guild => {
-              const isSelected = selectedGuildId === guild.id
-              return (
-                <button
-                  key={guild.id}
-                  onClick={() => handleGuildSelect(guild.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border whitespace-nowrap flex-shrink-0 transition-colors text-sm
-                    ${isSelected
-                      ? d ? "bg-amber-500/10 border-amber-500/30 text-amber-400 font-medium" : "bg-purple-600 border-purple-600 text-white font-medium"
-                      : d ? "bg-white/[0.03] border-white/10 text-gray-400 hover:border-white/20 hover:text-white" : "bg-white border-purple-100 text-gray-600 hover:border-purple-300 hover:text-gray-800"
-                    }`}>
-                  {guild.icon ? (
-                    <img src={guild.icon} alt={guild.name} className="w-5 h-5 rounded-full" />
-                  ) : (
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
-                      ${isSelected
-                        ? d ? "bg-amber-500/20 text-amber-400" : "bg-white/20 text-white"
-                        : d ? "bg-white/10 text-gray-400" : "bg-purple-100 text-purple-600"
-                      }`}>
-                      {guild.name[0]}
-                    </div>
-                  )}
-                  {guild.name}
-                </button>
-              )
-            })}
-          </div>
+          <GuildPillSelector
+            guilds={guilds}
+            loadingGuilds={guildsLoading}
+            selectedGuildId={selectedGuildId}
+            onSelect={setSelectedGuildId}
+            d={d}
+          />
 
           {/* 레이드 현황 */}
           {raidsLoading ? (
