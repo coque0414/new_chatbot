@@ -396,8 +396,13 @@ data.ArmoryProfile.CombatPower → "5,001.20" → Math.round(parseFloat(str.repl
 ### Vercel 콜드 스타트
 gateway-worker가 4분마다 `/api/discord/interactions`, `/api/raids`, `/api/characters`를 핑하여 서버리스 함수 워밍업 유지 (`pingVercel` in gateway-worker/index.js).
 
-### guildId 선택 UI 중복
-`GET /api/discord/guilds` + `<select>` 드롭다운 패턴이 `raid-create`, `fixed-raids`, `bot-settings`, `board`, `dashboard`, `chat` 6개 페이지에 각각 인라인으로 중복 구현돼 있음(재사용 가능한 공유 컴포넌트 없음). 나중에 `GuildSelector` 공용 컴포넌트로 추출 필요 — 백로그, 아직 미착수.
+### guildId 선택 UI 중복 (해결됨)
+`raid-create`, `fixed-raids`, `bot-settings`, `board`, `dashboard`, `chat` 6개 페이지가 전부 동일한 패턴이라고 여겨졌으나, 조사 결과 진짜 중복은 2쌍뿐이었음. 각각 공용 컴포넌트로 추출 완료:
+
+- `components/GuildSelectDropdown.js` — `raid-create`(단일탭+기차탭)와 `chat`이 공유. `<select>` + GuildSettings 공고채널 상태 박스. 부수효과(GuildSettings 조회, chat의 `resetSession()` 등)는 컴포넌트 밖 페이지 쪽에 유지.
+- `components/GuildPillSelector.js` — `fixed-raids`와 `board`가 공유. pill 버튼 + 목록 로드 시 첫 번째 길드 자동 선택(`autoSelectFirst` prop, 기본 `true`). 다운스트림 fetch(fixed-raids 3종/board 1종)는 각 페이지 기존 `useEffect`에 그대로 유지.
+
+`dashboard`(아코디언), `bot-settings`(전체 렌더 + `guildIds` 배치 조회)는 의도적으로 추출 대상에서 제외 — 선택기가 아니라 구조적으로 다른 UI 개념(조사로 확인됨).
 
 ### 로컬 dev 서버 중복 실행
 같은 세션(또는 여러 세션)에서 백그라운드로 띄운 `npm run dev`가 종료되지 않고 계속 남아있는 경우가 있음 — `npm`이 자식 프로세스(`next dev`)에 SIGTERM을 전달하지 않아서, npm 프로세스만 죽이면 실제 서버는 계속 살아있음. 두 인스턴스가 같은 `.next` 캐시에 동시에 쓰기를 시도하면 Turbopack 캐시가 깨지면서 임의의 라우트가 500을 뱉는 증상으로 나타남(`rmdir /s /q .next`로도 근본 해결 안 됨, 프로세스부터 정리해야 함). 작업 전후로 `node.exe` 프로세스 중 `frontend-next`를 가리키는 게 여러 개 있는지 확인 권장.
